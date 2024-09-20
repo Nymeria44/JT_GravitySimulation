@@ -2,12 +2,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Define the range for F and Z
-F_min, F_max = -10, 10
-Z_min, Z_max = 0.1, 10 
+F_min, F_max = -10, 1000
+Z_min, Z_max = 1, 60
 
 # Create an array of values for F and Z
-F = np.linspace(F_min, F_max, 400)
-Z = np.linspace(Z_min, Z_max, 400)
+F = np.linspace(F_min, F_max, 200)
+Z = np.linspace(Z_min, Z_max, 10000)
 
 # Create a grid of F and Z values
 F, Z = np.meshgrid(F, Z)
@@ -37,4 +37,3 @@ fig.colorbar(surf, shrink=0.5, aspect=5)
 
 # Show the plot
 plt.show()
-
