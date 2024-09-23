@@ -7,7 +7,7 @@ from mpl_toolkits.mplot3d import Axes3D
 ########################################
 # Creating bulk coordinates
 F_min, F_max = -100, 100
-Z_min, Z_max = 1, 600
+Z_min, Z_max = 1e-3, 600  
 
 F_bulk = np.linspace(F_min, F_max, 200)
 Z_bulk = np.linspace(Z_min, Z_max, 1000)
@@ -27,9 +27,7 @@ fig = plt.figure(figsize=(12, 8))
 ax = fig.add_subplot(111, projection='3d')
 surf = ax.plot_surface(F_bulk, Z_bulk, ds2_bulk, cmap='viridis', alpha=0.7)
 
-
-
-########################################
+#######################################
 # Boundary
 ########################################
 epsilon = 1e-3  # UV cutoff (Fefferman-Graham gauge)
@@ -53,10 +51,10 @@ Z_boundary = epsilon * F_dot_boundary
 ax.plot(F_boundary, Z_boundary, color='r', label='CFT', linewidth=3)
 
 # labels
-ax.set_xlabel('F')
-ax.set_ylabel('Z')
-ax.set_zlabel('ds^2')
-ax.set_title('JT Gravity: Bulk AdS_2 Metric and Boundary Curve')
+ax.set_xlabel('Time-like coordinate (F)')
+ax.set_ylabel('Radial coordinate (Z)')
+ax.set_zlabel('ds^2 (Metric)')
+ax.set_title('JT Gravity: Poincaré Patch AdS_2 Metric and Boundary Curve')
 # Add a legend to differentiate the bulk and boundary components
 ax.legend()
 
