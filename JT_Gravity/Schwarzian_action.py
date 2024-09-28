@@ -1,53 +1,100 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-# Define constants from the notes
-epsilon = 1e-3  # UV cutoff (Fefferman-Graham gauge)
-a = 1.0  # Dimensional parameter controlling dilaton at the boundary
-G = 1.0  # Gravitational constant
+# Constants
+C = 1.0  # Coupling constant in the Schwarzian action
 
-# Define time range for the boundary curve F(t)
-t_min, t_max = 0, 10000
-t = np.linspace(t_min, t_max, 1000)
+# Time parameters
+t_start = 0.0
+t_end = 10.0
+N = 1000  # Number of time points
+t = np.linspace(t_start, t_end, N)
+dt = t[1] - t[0]
 
-# Define the boundary curve F(t) and its derivatives
-# Boundary curve could be any desired reparametrization of time.
-# Here we use a perturbed linear function as an example.
-F = t + epsilon * np.sin(t)  # Simple perturbation of linear time
+# Initialize f(t) with a small perturbation
+epsilon = 0.01
+f = t + epsilon * np.sin(2 * np.pi * t / (t_end - t_start))
 
-# Calculate the first, second, and third derivatives of F(t)
-F_dot = np.gradient(F, t)
-F_ddot = np.gradient(F_dot, t)
-F_dddot = np.gradient(F_ddot, t)
+# Function to compute derivatives
+def compute_derivatives(f, dt):
+    # First derivative
+    f_prime = np.zeros_like(f)
+    f_prime[1:-1] = (f[2:] - f[:-2]) / (2 * dt)
+    f_prime[0] = (f[1] - f[0]) / dt  # Forward difference
+    f_prime[-1] = (f[-1] - f[-2]) / dt  # Backward difference
 
-# Boundary condition: Z(t) = epsilon * F'(t)
-Z = epsilon * F_dot
+    # Second derivative
+    f_double_prime = np.zeros_like(f)
+    f_double_prime[1:-1] = (f[2:] - 2 * f[1:-1] + f[:-2]) / dt**2
+    f_double_prime[0] = (f[2] - 2 * f[1] + f[0]) / dt**2
+    f_double_prime[-1] = (f[-1] - 2 * f[-2] + f[-3]) / dt**2
 
-# Boundary dilaton condition: Φ_bdy = a / (2 * epsilon)
-Phi_bdy = a / (2 * epsilon)
+    # Third derivative
+    f_triple_prime = np.zeros_like(f)
+    f_triple_prime[2:-2] = (f[4:] - 2 * f[3:-1] + 2 * f[1:-3] - f[0:-4]) / (2 * dt**3)
+    f_triple_prime[0:2] = f_triple_prime[2]
+    f_triple_prime[-2:] = f_triple_prime[-3]
 
-# Schwarzian derivative {F, t}
-Schwarzian = (F_dddot / F_dot) - (3 / 2) * (F_ddot / F_dot)**2
+    return f_prime, f_double_prime, f_triple_prime
 
-# Compute the Hawking boundary parameters (as per the notes)
-# √(-γ) = 1/epsilon, K = 1 + epsilon^2 * {F(t), t}
-gamma = 1 / epsilon
-K = 1 + epsilon**2 * Schwarzian
+# Function to compute Schwarzian derivative
+def schwarzian_derivative(f, dt):
+    f_prime, f_double_prime, f_triple_prime = compute_derivatives(f, dt)
+    # Avoid division by zero
+    with np.errstate(divide='ignore', invalid='ignore'):
+        s = (f_triple_prime / f_prime) - (1.5) * (f_double_prime / f_prime)**2
+        s = np.nan_to_num(s)  # Replace NaNs and infs with zero
+    return s
 
-# Compute the action S = -C * ∫ dt {F, t}
-C = a / (16 * np.pi * G)
+# Time evolution using Euler method
+def evolve_f(f, dt, steps):
+    f_evolved = np.copy(f)
+    for step in range(steps):
+        s = schwarzian_derivative(f_evolved, dt)
+        # Equation of motion: C * d^2 f / dt^2 = variation of Schwarzian action
+        # For simplicity, assume d^2 f / dt^2 = -delta S / delta f
+        # Here, we approximate delta S / delta f ~ Schwarzian derivative
+        acceleration = -C * s
+        # Update f using simple integration (Euler method)
+        # Need to keep track of velocities (first derivatives)
+        if step == 0:
+            # Initialize velocity
+            velocity = np.zeros_like(f)
+        else:
+            # Update velocity and position
+            velocity += acceleration * dt
+            f_evolved += velocity * dt
+    return f_evolved
 
-# Numerical integration over time for the Schwarzian action
-Schwarzian_action = -C * np.trapz(Schwarzian, t)
+# Number of evolution steps
+steps = 100
 
-# Plot the Schwarzian derivative
-plt.figure(figsize=(8, 6))
-plt.plot(t, Schwarzian, label='Schwarzian {F(t), t}')
+# Evolve f(t)
+f_evolved = evolve_f(f, dt, steps)
+
+# Compute Schwarzian derivative
+s_initial = schwarzian_derivative(f, dt)
+s_evolved = schwarzian_derivative(f_evolved, dt)
+
+# Plot results
+plt.figure(figsize=(12, 8))
+
+plt.subplot(2, 1, 1)
+plt.plot(t, f, label='Initial f(t)')
+plt.plot(t, f_evolved, label='Evolved f(t)')
 plt.xlabel('t')
-plt.ylabel('Schwarzian {F(t), t}')
-plt.title('Schwarzian Derivative of the Boundary Curve')
+plt.ylabel('f(t)')
+plt.title('Evolution of f(t)')
 plt.legend()
+
+plt.subplot(2, 1, 2)
+plt.plot(t, s_initial, label='Initial Schwarzian {f(t), t}')
+plt.plot(t, s_evolved, label='Evolved Schwarzian {f(t), t}')
+plt.xlabel('t')
+plt.ylabel('Schwarzian Derivative')
+plt.title('Schwarzian Derivative Before and After Evolution')
+plt.legend()
+
+plt.tight_layout()
 plt.show()
 
-# Output the computed Schwarzian action
-print("Schwarzian Action:", Schwarzian_action)
