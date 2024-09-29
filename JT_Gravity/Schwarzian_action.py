@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp
-from scipy.interpolate import interp1d
+from scipy.interpolate import CubicSpline
 import sympy as sp
 
 # Constants
@@ -24,18 +24,17 @@ def main():
     # Compute initial Schwarzian derivative
     f_initial, f_prime_initial, f_double_prime_initial, S_initial = compute_initial_schwarzian(t_np, phi_initial, phi_prime, phi_double_prime, phi_triple_prime)
 
-    # Interpolate S_initial to create a continuous function S0(t)
-    S0_interp = interp1d(t_np, S_initial, kind='cubic', fill_value='extrapolate')
+    # Interpolate S_initial to create a continuous function S0(t) using CubicSpline
+    S0_spline = CubicSpline(t_np, S_initial)
 
     # Set initial conditions for the ODE solver
     initial_conditions = [f_initial[0], f_prime_initial[0], f_double_prime_initial[0], dilaton_initial[0], dilaton_prime_initial[0]]
 
     # Solve the equations of motion
-    sol = solve_equations_of_motion(t_np, initial_conditions, S0_interp)
+    sol = solve_equations_of_motion(t_np, initial_conditions, S0_spline)
 
     # Process the solution and plot the results
-    # Add the missing `epsilon` argument
-    process_and_plot_solution(t_np, sol, phi_initial, S_initial, f_initial, epsilon, S0_interp)
+    process_and_plot_solution(t_np, sol, phi_initial, S_initial, f_initial, epsilon, S0_spline)
 
 def temperature_perturbation(t: np.ndarray, delta_T: float, omega_T: float) -> np.ndarray:
     """Defines a time-dependent temperature perturbation."""
@@ -90,12 +89,14 @@ def compute_initial_schwarzian(t_np: np.ndarray, phi_initial: np.ndarray, phi_pr
 
     return f_initial, f_prime_initial, f_double_prime_initial, S_initial
 
-def solve_equations_of_motion(t_np: np.ndarray, initial_conditions, S0_interp):
+def solve_equations_of_motion(t_np: np.ndarray, initial_conditions, S0_spline):
     """Solves the equations of motion for the system with thermal perturbations."""
     def equations_of_motion(t, y):
         f, f_prime, f_double_prime, phi, phi_prime = y
         temperature = temperature_perturbation(t, delta_T, omega_T)
-        S0_t = S0_interp(t)
+        
+        # Using CubicSpline to get the value of S0 at time t
+        S0_t = S0_spline(t)
         S_time_dependent = S0_t * temperature
 
         f_prime_safe = np.clip(f_prime, epsilon, None)
@@ -111,6 +112,7 @@ def solve_equations_of_motion(t_np: np.ndarray, initial_conditions, S0_interp):
         raise RuntimeError(f"Solver failed: {sol.message}")
 
     return sol
+
 def process_and_plot_solution(t_np, sol, phi_initial, S_initial, f_initial, epsilon, S0_interp):
     """
     Processes the solution and plots the results.
