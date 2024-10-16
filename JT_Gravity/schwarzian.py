@@ -84,4 +84,3 @@ def schwarzian_action(f, x, t0, t1, C=1, numerical=False, subs=None):
         action_simplified = simplify(action)
         
         return action_simplified
-
