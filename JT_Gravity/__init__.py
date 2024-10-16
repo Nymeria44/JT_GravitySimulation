@@ -1,45 +1,32 @@
+# __init__.py
 import numpy as np
 import matplotlib.pyplot as plt
 from sympy import symbols, tanh
 from Schwarzian import schwarzian_action
 
-# Var class for symbolic and numerical values
-class Var:
-    def __init__(self, sym_value, num_value=None):
-        self.sym = sym_value  # Symbolic part
-        self.num = num_value  # Numerical part
-
-    def substitute(self, symbol, dataPoints):
-        """
-        Substitute a symbolic value with a numerical one.
-        """
-        self.num = self.sym.subs(symbol, dataPoints)
-
 # Define symbolic variables
 t = symbols('t')
-a = Var(symbols('a'))
-f = Var(tanh(a.sym * t))
+a_sym = symbols('a')
+f_sym = tanh(a_sym * t)
 
 # Integration limits
 t0 = 0
 t1 = 1
 
-dataPoints = 200
+data_points = 200
 
 # Define the range of 'a' values (numerical)
-a_values = np.linspace(0.1, 5, dataPoints )
+a_values = np.linspace(0.1, 5, data_points)
 
-# Init list action values
+# Initialise list to store action values
 action_values = []
 
 for a_value in a_values:
-    a.substitute(a.sym, a_value)
-    f.substitute(a.sym, a_value)
+    # Discretize the function
+    f_num = f_sym.subs(a_sym, a_value)
 
     # Compute the Schwarzian action
-    action = schwarzian_action(f.num, t, t0, t1, C=1, numerical=True)
-    
-    # Store the action value
+    action = schwarzian_action(f_num, t, t0, t1, C=1, numerical=True)
     action_values.append(action)
 
 # Plot action vs 'a'
