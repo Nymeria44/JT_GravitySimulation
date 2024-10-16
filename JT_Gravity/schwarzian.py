@@ -1,7 +1,6 @@
 # schwarzian.py
 
-from sympy import diff, simplify, lambdify, Symbol
-import numpy as np
+from sympy import diff, simplify, lambdify
 from scipy.integrate import quad
 
 def schwarzian_der(f, x):
@@ -31,7 +30,7 @@ def schwarzian_der(f, x):
     
     return S_simplified
 
-def schwarzian_action(f, x, t0, t1, C=1, numerical=False):
+def schwarzian_action(f, x, t0, t1, C=1, numerical=False, subs=None):
     """
     Compute the Schwarzian action of a function f over the interval [t0, t1].
     
@@ -48,6 +47,8 @@ def schwarzian_action(f, x, t0, t1, C=1, numerical=False):
         The constant coefficient in the Schwarzian action. Default is 1.
     numerical : bool, optional
         If True, perform numerical integration. If False, attempt symbolic integration.
+    subs : dict, optional
+        A dictionary of substitutions to be made in the expression before evaluation.
     
     Returns:
     float or sympy expression
@@ -55,6 +56,11 @@ def schwarzian_action(f, x, t0, t1, C=1, numerical=False):
     """
     # Compute the Schwarzian derivative
     S = schwarzian_der(f, x)
+    
+    if subs is not None:
+        # Substitute numerical values into S and f
+        S = S.subs(subs)
+        f = f.subs(subs)
     
     if numerical:
         # Convert S to a numerical function
@@ -78,3 +84,4 @@ def schwarzian_action(f, x, t0, t1, C=1, numerical=False):
         action_simplified = simplify(action)
         
         return action_simplified
+
