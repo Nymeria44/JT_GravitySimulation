@@ -1,9 +1,9 @@
 import time
-import jax  # This line resolves the "jax not defined" issue
+import jax
 import jax.numpy as jnp
-from jax import grad
 from jax.scipy.optimize import minimize
 from jax.example_libraries import optimizers
+import optax
 
 def run_bfgs_optimization(action_to_minimize, p_initial):
     start_time = time.time()
@@ -12,7 +12,7 @@ def run_bfgs_optimization(action_to_minimize, p_initial):
     action_value_bfgs = action_to_minimize(result_bfgs.x)
     return action_value_bfgs, end_time - start_time
 
-def run_adam_optimization(action_to_minimize, p_initial, num_steps=2000, step_size=0.01):
+def run_adam_optimization(action_to_minimize, p_initial, num_steps=3000, step_size=0.001):
     opt_init, opt_update, get_params = optimizers.adam(step_size=step_size)
     opt_state = opt_init(p_initial)
     
@@ -32,7 +32,32 @@ def run_adam_optimization(action_to_minimize, p_initial, num_steps=2000, step_si
     action_value_adam = action_to_minimize(p_optimal_adam)
     return action_value_adam, end_time - start_time
 
-def run_newtons_method(action_to_minimize, grad_action, hessian_action, p_initial, num_steps=20):
+def run_optax_adam_optimization(action_to_minimize, p_initial, num_steps=3000, step_size=0.003):
+    # Initialize the Adam optimizer from optax with the specified learning rate
+    optimizer = optax.adam(learning_rate=step_size)
+    opt_state = optimizer.init(p_initial)
+    
+    @jax.jit
+    def adam_step(i, opt_state, params):
+        # Compute the gradients for the current parameters
+        grads = jax.grad(action_to_minimize)(params)
+        # Perform an update step with the gradients
+        updates, opt_state = optimizer.update(grads, opt_state, params)
+        # Apply the updates to the parameters
+        params = optax.apply_updates(params, updates)
+        return opt_state, params
+
+    start_time = time.time()
+    params = p_initial
+    for i in range(num_steps):
+        # Iteratively update the parameters
+        opt_state, params = adam_step(i, opt_state, params)
+    
+    end_time = time.time()
+    action_value_adam = action_to_minimize(params)
+    return action_value_adam, end_time - start_time
+
+def run_newtons_method(action_to_minimize, grad_action, hessian_action, p_initial, num_steps=10):
     p_newton = p_initial
     start_time = time.time()
     for i in range(num_steps):
@@ -45,7 +70,7 @@ def run_newtons_method(action_to_minimize, grad_action, hessian_action, p_initia
     action_value_newton = action_to_minimize(p_newton)
     return action_value_newton, end_time - start_time
 
-def run_hessian_optimization(action_to_minimize, grad_action, hessian_action, p_initial, num_steps=20, learning_rate=0.05):
+def run_hessian_optimization(action_to_minimize, grad_action, hessian_action, p_initial, num_steps=40, learning_rate=0.001):
     p_hessian = p_initial
     start_time = time.time()
     for i in range(num_steps):
@@ -58,9 +83,78 @@ def run_hessian_optimization(action_to_minimize, grad_action, hessian_action, p_
     action_value_hessian = action_to_minimize(p_hessian)
     return action_value_hessian, end_time - start_time
 
-def print_final_comparison(bfgs_result, bfgs_time, adam_result, adam_time, newton_result, newton_time, hessian_result, hessian_time):
+def run_yogi_optimization(action_to_minimize, p_initial, num_steps=3000, step_size=0.002):
+    optimizer = optax.yogi(learning_rate=step_size)
+    opt_state = optimizer.init(p_initial)
+    
+    @jax.jit
+    def yogi_step(i, opt_state, params):
+        grads = jax.grad(action_to_minimize)(params)
+        updates, opt_state = optimizer.update(grads, opt_state, params)
+        params = optax.apply_updates(params, updates)
+        return opt_state, params
+
+    start_time = time.time()
+    params = p_initial
+    for i in range(num_steps):
+        opt_state, params = yogi_step(i, opt_state, params)
+    
+    end_time = time.time()
+    action_value_yogi = action_to_minimize(params)
+    return action_value_yogi, end_time - start_time
+
+def run_lbfgs_optimization(action_to_minimize, p_initial, num_steps=3000, step_size=0.01):
+    optimizer = optax.lbfgs(learning_rate=step_size)
+    opt_state = optimizer.init(p_initial)
+    
+    @jax.jit
+    def lbfgs_step(i, opt_state, params):
+        value = action_to_minimize(params)
+        grads = jax.grad(action_to_minimize)(params)
+        updates, opt_state = optimizer.update(grads, opt_state, params, value=value, grad=grads, value_fn=action_to_minimize)
+        params = optax.apply_updates(params, updates)
+        return opt_state, params
+
+    start_time = time.time()
+    params = p_initial
+    for i in range(num_steps):
+        opt_state, params = lbfgs_step(i, opt_state, params)
+    
+    end_time = time.time()
+    action_value_lbfgs = action_to_minimize(params)
+    return action_value_lbfgs, end_time - start_time
+
+def run_adabelief_optimization(action_to_minimize, p_initial, num_steps=3000, step_size=0.001):
+    optimizer = optax.adabelief(learning_rate=step_size)
+    opt_state = optimizer.init(p_initial)
+    
+    @jax.jit
+    def adabelief_step(i, opt_state, params):
+        grads = jax.grad(action_to_minimize)(params)
+        updates, opt_state = optimizer.update(grads, opt_state, params)
+        params = optax.apply_updates(params, updates)
+        return opt_state, params
+
+    start_time = time.time()
+    params = p_initial
+    for i in range(num_steps):
+        opt_state, params = adabelief_step(i, opt_state, params)
+    
+    end_time = time.time()
+    action_value_adabelief = action_to_minimize(params)
+    return action_value_adabelief, end_time - start_time
+
+def print_final_comparison(bfgs_result, bfgs_time, adam_result, adam_time, yogi_result, yogi_time,
+                           lbfgs_result, lbfgs_time, adabelief_result, adabelief_time,
+                           newton_result, newton_time, hessian_result, hessian_time,
+                           optax_adam_result, optax_adam_time):
     print("\nFinal Action Values and Time Comparison:")
     print(f"BFGS: {bfgs_result} | Time Taken: {bfgs_time:.4f} seconds")
-    print(f"Adam: {adam_result} | Time Taken: {adam_time:.4f} seconds")
+    print(f"Adam (JAX): {adam_result} | Time Taken: {adam_time:.4f} seconds")
+    print(f"Adam (Optax): {optax_adam_result} | Time Taken: {optax_adam_time:.4f} seconds")
+    print(f"Yogi: {yogi_result} | Time Taken: {yogi_time:.4f} seconds")
+    print(f"LBFGS: {lbfgs_result} | Time Taken: {lbfgs_time:.4f} seconds")
+    print(f"AdaBelief: {adabelief_result} | Time Taken: {adabelief_time:.4f} seconds")
     print(f"Newton's Method: {newton_result} | Time Taken: {newton_time:.4f} seconds")
     print(f"Hessian-based Optimization: {hessian_result} | Time Taken: {hessian_time:.4f} seconds")
+

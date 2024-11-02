@@ -5,13 +5,18 @@ import matplotlib
 matplotlib.use('TkAgg')  # or 'Qt5Agg'
 import matplotlib.pyplot as plt
 import os
+import optax  # Additional optimizers
 
 # Custom Imports from `optimisations.py`
 from optimisations import (
     run_bfgs_optimization,
     run_adam_optimization,
+    run_optax_adam_optimization,
     run_newtons_method,
     run_hessian_optimization,
+    run_yogi_optimization,
+    run_lbfgs_optimization,
+    run_adabelief_optimization,
     print_final_comparison
 )
 
@@ -20,11 +25,11 @@ os.environ['XLA_FLAGS'] = '--xla_gpu_triton_gemm_any=True'
 
 C = 1.0    # Gravitational coupling constant
 T = 100.0  # Period for integration
-N = 100000  # Number of time steps
+N = 50000  # Number of time steps
 t = jnp.linspace(0.001, T, N)  # Time grid
 
 # Number of basis functions
-M = 50
+M = 40
 n = jnp.arange(1, M + 1)  # Frequencies from 1 to M
 
 # Initial parameters (small random perturbation)
@@ -101,28 +106,53 @@ hessian_action = jax.hessian(action_to_minimize)
 # Run and time each optimisation method
 bfgs_result, bfgs_time = run_bfgs_optimization(action_to_minimize, p_initial)
 adam_result, adam_time = run_adam_optimization(action_to_minimize, p_initial)
+optax_adam_result, optax_adam_time = run_optax_adam_optimization(action_to_minimize, p_initial)
+yogi_result, yogi_time = run_yogi_optimization(action_to_minimize, p_initial)
+lbfgs_result, lbfgs_time = run_lbfgs_optimization(action_to_minimize, p_initial)
+adabelief_result, adabelief_time = run_adabelief_optimization(action_to_minimize, p_initial)
 newton_result, newton_time = run_newtons_method(action_to_minimize, grad_action, hessian_action, p_initial)
 hessian_result, hessian_time = run_hessian_optimization(action_to_minimize, grad_action, hessian_action, p_initial)
 
 # Final Comparison
-print_final_comparison(bfgs_result, bfgs_time, adam_result, adam_time, newton_result, newton_time, hessian_result, hessian_time)
+print_final_comparison(
+    bfgs_result, bfgs_time, adam_result, adam_time, yogi_result, yogi_time,
+    lbfgs_result, lbfgs_time, adabelief_result, adabelief_time,
+    newton_result, newton_time, hessian_result, hessian_time,
+    optax_adam_result, optax_adam_time
+)
 
-# Plotting the results for one of the methods (e.g., Adam)
-f_optimal = f(t, p_initial)  # Note: Adjust `p_initial` to the best performing result if needed
-f_t_minus_t = f_optimal - t  # Deviation from linearity
+# Dictionary to store optimized parameters for each method
+optimized_params = {
+    "BFGS": bfgs_result,
+    "Adam (JAX)": adam_result,
+    "Yogi": yogi_result,
+    "LBFGS": lbfgs_result,
+    "AdaBelief": adabelief_result,
+    "Newton's Method": newton_result,
+    "Hessian-based Optimization": hessian_result
+}
 
-# Plot the optimized f(t)
-plt.plot(t, f_optimal, label="Optimized f(t) using Adam")
+# Plot f(t) for each optimization method
+plt.figure(figsize=(12, 8))
+for method, p_optimal in optimized_params.items():
+    f_optimal = f(t, p_optimal)
+    plt.plot(t, f_optimal, label=f"Optimized f(t) using {method}")
+
 plt.xlabel("t")
 plt.ylabel("f(t)")
-plt.title("Optimized Reparametrisation of f(t) using Adam")
+plt.title("Optimized Reparametrisation of f(t) for Each Method")
 plt.legend()
 plt.show()
 
-# Plot the deviation from linearity
-plt.plot(t, f_t_minus_t, label="Deviation from Linearity (f(t) - t)")
+# Plot deviation from linearity for each optimization method
+plt.figure(figsize=(12, 8))
+for method, p_optimal in optimized_params.items():
+    f_optimal = f(t, p_optimal)
+    f_t_minus_t = f_optimal - t
+    plt.plot(t, f_t_minus_t, label=f"Deviation (f(t) - t) using {method}")
+
 plt.xlabel("t")
 plt.ylabel("f(t) - t")
-plt.title("Deviation of Optimized f(t) from Linearity using Adam")
+plt.title("Deviation of Optimized f(t) from Linearity for Each Method")
 plt.legend()
 plt.show()
