@@ -5,7 +5,6 @@ import matplotlib
 matplotlib.use('TkAgg')  # or 'Qt5Agg'
 import matplotlib.pyplot as plt
 import os
-import optax  # Additional optimizers
 
 # Custom Imports from `optimisations.py`
 from optimisations import (
@@ -17,7 +16,6 @@ from optimisations import (
     run_yogi_optimization,
     run_lbfgs_optimization,
     run_adabelief_optimization,
-    print_final_comparison
 )
 
 # Constants and setup
@@ -25,7 +23,7 @@ os.environ['XLA_FLAGS'] = '--xla_gpu_triton_gemm_any=True'
 
 C = 1.0    # Gravitational coupling constant
 T = 100.0  # Period for integration
-N = 50000  # Number of time steps
+N = 10000  # Number of time steps
 t = jnp.linspace(0.001, T, N)  # Time grid
 
 # Number of basis functions
@@ -103,40 +101,44 @@ def action_to_minimize(p):
 grad_action = grad(action_to_minimize)
 hessian_action = jax.hessian(action_to_minimize)
 
-# Run and time each optimisation method
-bfgs_result, bfgs_time = run_bfgs_optimization(action_to_minimize, p_initial)
-adam_result, adam_time = run_adam_optimization(action_to_minimize, p_initial)
-optax_adam_result, optax_adam_time = run_optax_adam_optimization(action_to_minimize, p_initial)
-yogi_result, yogi_time = run_yogi_optimization(action_to_minimize, p_initial)
-lbfgs_result, lbfgs_time = run_lbfgs_optimization(action_to_minimize, p_initial)
-adabelief_result, adabelief_time = run_adabelief_optimization(action_to_minimize, p_initial)
-newton_result, newton_time = run_newtons_method(action_to_minimize, grad_action, hessian_action, p_initial)
-hessian_result, hessian_time = run_hessian_optimization(action_to_minimize, grad_action, hessian_action, p_initial)
+# Define a list of optimization methods
+optimization_methods = [
+    ("BFGS", run_bfgs_optimization, (action_to_minimize, p_initial)),
+    ("Adam (JAX)", run_adam_optimization, (action_to_minimize, p_initial)),
+    ("Adam (Optax)", run_optax_adam_optimization, (action_to_minimize, p_initial)),
+    ("Yogi", run_yogi_optimization, (action_to_minimize, p_initial)),
+    ("LBFGS", run_lbfgs_optimization, (action_to_minimize, p_initial)),
+    ("AdaBelief", run_adabelief_optimization, (action_to_minimize, p_initial)),
+    ("Newton's Method", run_newtons_method, (action_to_minimize, grad_action, hessian_action, p_initial)),
+    ("Hessian-based Optimization", run_hessian_optimization, (action_to_minimize, grad_action, hessian_action, p_initial))
+]
+
+# Initialize dictionaries to store results
+optimized_params = {}
+action_values = {}
+times_taken = {}
+
+# Run and time each optimization method
+for method_name, optimization_function, args in optimization_methods:
+    p_optimal, action_value, time_taken = optimization_function(*args)
+    optimized_params[method_name] = p_optimal
+    action_values[method_name] = action_value
+    times_taken[method_name] = time_taken
 
 # Final Comparison
-print_final_comparison(
-    bfgs_result, bfgs_time, adam_result, adam_time, yogi_result, yogi_time,
-    lbfgs_result, lbfgs_time, adabelief_result, adabelief_time,
-    newton_result, newton_time, hessian_result, hessian_time,
-    optax_adam_result, optax_adam_time
-)
-
-# Dictionary to store optimized parameters for each method
-optimized_params = {
-    "BFGS": bfgs_result,
-    "Adam (JAX)": adam_result,
-    "Yogi": yogi_result,
-    "LBFGS": lbfgs_result,
-    "AdaBelief": adabelief_result,
-    "Newton's Method": newton_result,
-    "Hessian-based Optimization": hessian_result
-}
+print("\nFinal Action Values and Time Comparison:")
+for method_name in action_values:
+    print(f"{method_name}: {action_values[method_name]} | Time Taken: {times_taken[method_name]:.4f} seconds")
 
 # Plot f(t) for each optimization method
+expected_shape = p_initial.shape
 plt.figure(figsize=(12, 8))
 for method, p_optimal in optimized_params.items():
-    f_optimal = f(t, p_optimal)
-    plt.plot(t, f_optimal, label=f"Optimized f(t) using {method}")
+    if isinstance(p_optimal, jnp.ndarray) and p_optimal.shape == expected_shape:
+        f_optimal = f(t, p_optimal)
+        plt.plot(t, f_optimal, label=f"Optimized f(t) using {method}")
+    else:
+        print(f"Skipping {method} due to incompatible result shape or type.")
 
 plt.xlabel("t")
 plt.ylabel("f(t)")
@@ -147,9 +149,12 @@ plt.show()
 # Plot deviation from linearity for each optimization method
 plt.figure(figsize=(12, 8))
 for method, p_optimal in optimized_params.items():
-    f_optimal = f(t, p_optimal)
-    f_t_minus_t = f_optimal - t
-    plt.plot(t, f_t_minus_t, label=f"Deviation (f(t) - t) using {method}")
+    if isinstance(p_optimal, jnp.ndarray) and p_optimal.shape == expected_shape:
+        f_optimal = f(t, p_optimal)
+        f_t_minus_t = f_optimal - t
+        plt.plot(t, f_t_minus_t, label=f"Deviation (f(t) - t) using {method}")
+    else:
+        print(f"Skipping {method} due to incompatible result shape or type.")
 
 plt.xlabel("t")
 plt.ylabel("f(t) - t")
