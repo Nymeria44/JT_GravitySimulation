@@ -178,4 +178,3 @@ plt.ylabel("f(t) - t")
 plt.title("Deviation of Optimized f(t) from Linearity using Adam")
 plt.legend()
 plt.show()
-
