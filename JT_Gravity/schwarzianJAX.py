@@ -7,10 +7,15 @@ matplotlib.use('TkAgg')  # or 'Qt5Agg'
 import matplotlib.pyplot as plt
 
 # Constants and setup
+import os
+os.environ['XLA_FLAGS'] = '--xla_gpu_triton_gemm_any=True'
+
+jax.config.update("jax_enable_x64", True)
+
 C = 1.0    # Gravitational coupling constant
 T = 100.0  # Period for integration
-N = 1000   # Number of time steps
-t = jnp.linspace(0, T, N)  # Time grid
+N = 10000   # Number of time steps
+t = jnp.linspace(0.001, T, N)  # Time grid
 
 # Number of basis functions
 M = 10
