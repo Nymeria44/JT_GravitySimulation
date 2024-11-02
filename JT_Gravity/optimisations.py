@@ -182,4 +182,3 @@ def print_final_comparison(bfgs_result, bfgs_time, adam_result, adam_time, yogi_
     print(f"AdaBelief: {adabelief_result} | Time Taken: {adabelief_time:.4f} seconds")
     print(f"Newton's Method: {newton_result} | Time Taken: {newton_time:.4f} seconds")
     print(f"Hessian-based Optimization: {hessian_result} | Time Taken: {hessian_time:.4f} seconds")
-

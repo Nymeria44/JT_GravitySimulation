@@ -36,6 +36,7 @@ os.environ['XLA_FLAGS'] = '--xla_gpu_triton_gemm_any=True'
 C = 1.0    # Gravitational coupling constant
 T = 100.0  # Period for integration
 N = 10000  # Number of time steps
+perturbation_strength = 100
 t = jnp.linspace(0.001, T, N)  # Time grid
 
 # Number of basis functions
@@ -49,18 +50,18 @@ p_initial = jax.random.normal(key, shape=(2 * M,)) * 0.01  # Updated to include 
 # Define f(t, p) with both sine and cosine terms
 def f(t, p):
     M = p.shape[0] // 2
-    sin_coeffs = p[:M]
-    cos_coeffs = p[M:]
-    sin_terms = jnp.sin(2 * jnp.pi * n[:, None] * t[None, :] / T)  # Shape (M, N)
-    cos_terms = jnp.cos(2 * jnp.pi * n[:, None] * t[None, :] / T)  # Shape (M, N)
-    delta_f = jnp.dot(sin_coeffs, sin_terms) + jnp.dot(cos_coeffs, cos_terms)  # Shape (N,)
-    return t + delta_f  # Shape (N,)
+    sin_coeffs = p[:M] * perturbation_strength
+    cos_coeffs = p[M:] * perturbation_strength
+    sin_terms = jnp.sin(2 * jnp.pi * n[:, None] * t[None, :] / T)
+    cos_terms = jnp.cos(2 * jnp.pi * n[:, None] * t[None, :] / T)
+    delta_f = jnp.dot(sin_coeffs, sin_terms) + jnp.dot(cos_coeffs, cos_terms)
+    return t + delta_f
 
 # First derivative f'(t)
 def f_prime(t, p):
     M = p.shape[0] // 2
-    sin_coeffs = p[:M]
-    cos_coeffs = p[M:]
+    sin_coeffs = p[:M] * perturbation_strength
+    cos_coeffs = p[M:] * perturbation_strength
     sin_deriv = jnp.cos(2 * jnp.pi * n[:, None] * t[None, :] / T)
     cos_deriv = -jnp.sin(2 * jnp.pi * n[:, None] * t[None, :] / T)
     delta_f_prime = jnp.dot(sin_coeffs * (2 * jnp.pi * n / T), sin_deriv) + jnp.dot(cos_coeffs * (2 * jnp.pi * n / T), cos_deriv)
@@ -69,8 +70,8 @@ def f_prime(t, p):
 # Second derivative f''(t)
 def f_double_prime(t, p):
     M = p.shape[0] // 2
-    sin_coeffs = p[:M]
-    cos_coeffs = p[M:]
+    sin_coeffs = p[:M] * perturbation_strength
+    cos_coeffs = p[M:] * perturbation_strength
     sin_double_deriv = -jnp.sin(2 * jnp.pi * n[:, None] * t[None, :] / T)
     cos_double_deriv = -jnp.cos(2 * jnp.pi * n[:, None] * t[None, :] / T)
     delta_f_double_prime = jnp.dot(sin_coeffs * ((2 * jnp.pi * n / T) ** 2), sin_double_deriv) + jnp.dot(cos_coeffs * ((2 * jnp.pi * n / T) ** 2), cos_double_deriv)
@@ -79,8 +80,8 @@ def f_double_prime(t, p):
 # Third derivative f'''(t)
 def f_triple_prime(t, p):
     M = p.shape[0] // 2
-    sin_coeffs = p[:M]
-    cos_coeffs = p[M:]
+    sin_coeffs = p[:M] * perturbation_strength
+    cos_coeffs = p[M:] * perturbation_strength
     sin_triple_deriv = -jnp.cos(2 * jnp.pi * n[:, None] * t[None, :] / T)
     cos_triple_deriv = jnp.sin(2 * jnp.pi * n[:, None] * t[None, :] / T)
     delta_f_triple_prime = jnp.dot(sin_coeffs * ((2 * jnp.pi * n / T) ** 3), sin_triple_deriv) + jnp.dot(cos_coeffs * ((2 * jnp.pi * n / T) ** 3), cos_triple_deriv)
