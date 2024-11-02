@@ -18,6 +18,18 @@ from optimisations import (
     run_adabelief_optimization,
 )
 
+# Configuration dictionary to enable/disable specific optimizers
+OPTIMIZER_CONFIG = {
+    "BFGS": True,
+    "Adam (JAX)": True,
+    "Adam (Optax)": True,
+    "Yogi": True,
+    "LBFGS": True,
+    "AdaBelief": True,
+    "Newton's Method": False,
+    "Hessian-based Optimization": False
+}
+
 # Constants and setup
 os.environ['XLA_FLAGS'] = '--xla_gpu_triton_gemm_any=True'
 
@@ -101,17 +113,20 @@ def action_to_minimize(p):
 grad_action = grad(action_to_minimize)
 hessian_action = jax.hessian(action_to_minimize)
 
-# Define a list of optimization methods
+# Define a list of optimization methods, respecting the configuration dictionary
 optimization_methods = [
-    ("BFGS", run_bfgs_optimization, (action_to_minimize, p_initial)),
-    ("Adam (JAX)", run_adam_optimization, (action_to_minimize, p_initial)),
-    ("Adam (Optax)", run_optax_adam_optimization, (action_to_minimize, p_initial)),
-    ("Yogi", run_yogi_optimization, (action_to_minimize, p_initial)),
-    ("LBFGS", run_lbfgs_optimization, (action_to_minimize, p_initial)),
-    ("AdaBelief", run_adabelief_optimization, (action_to_minimize, p_initial)),
-    ("Newton's Method", run_newtons_method, (action_to_minimize, grad_action, hessian_action, p_initial)),
-    ("Hessian-based Optimization", run_hessian_optimization, (action_to_minimize, grad_action, hessian_action, p_initial))
+    ("BFGS", run_bfgs_optimization, (action_to_minimize, p_initial)) if OPTIMIZER_CONFIG["BFGS"] else None,
+    ("Adam (JAX)", run_adam_optimization, (action_to_minimize, p_initial)) if OPTIMIZER_CONFIG["Adam (JAX)"] else None,
+    ("Adam (Optax)", run_optax_adam_optimization, (action_to_minimize, p_initial)) if OPTIMIZER_CONFIG["Adam (Optax)"] else None,
+    ("Yogi", run_yogi_optimization, (action_to_minimize, p_initial)) if OPTIMIZER_CONFIG["Yogi"] else None,
+    ("LBFGS", run_lbfgs_optimization, (action_to_minimize, p_initial)) if OPTIMIZER_CONFIG["LBFGS"] else None,
+    ("AdaBelief", run_adabelief_optimization, (action_to_minimize, p_initial)) if OPTIMIZER_CONFIG["AdaBelief"] else None,
+    ("Newton's Method", run_newtons_method, (action_to_minimize, grad_action, hessian_action, p_initial)) if OPTIMIZER_CONFIG["Newton's Method"] else None,
+    ("Hessian-based Optimization", run_hessian_optimization, (action_to_minimize, grad_action, hessian_action, p_initial)) if OPTIMIZER_CONFIG["Hessian-based Optimization"] else None
 ]
+
+# Filter out `None` values from the list (i.e., disabled methods)
+optimization_methods = [method for method in optimization_methods if method is not None]
 
 # Initialize dictionaries to store results
 optimized_params = {}
