@@ -32,41 +32,23 @@ OPTIMIZER_CONFIG = {
 }
 
 def main():
-    # Initialize user perturbation configuration
-    user_config = PerturbationConfig(
+    # Initialize perturbation configuration, including user and optimizer parameters
+    config = PerturbationConfig(
         T=100000.0,
         N=100000,
         C=1.0,
         perturbation_strength=60.0,
-        M_user=5
+        M_user=5,
+        M_opt=15
     )
 
-    # Define optimizer-related settings separately
-    M_opt = 15
-    n_opt = jnp.arange(user_config.M_user + 1, user_config.M_user + M_opt + 1)
-    
-    # Access user_config parameters as needed
-    t = jnp.linspace(0.001, user_config.T, user_config.N)
-
-    # User-controlled perturbation parameters (Fixed)
-    M_user = 5
-    n_user = jnp.arange(1, M_user + 1)
-    key_user = jax.random.PRNGKey(1)
-    p_user = jax.random.normal(key_user, shape=(2 * M_user,)) * 0.01
-
-    # Optimizer-controlled parameters (Initial Guess)
-    M_opt = 15
-    n_opt = jnp.arange(1, M_opt + 1)
+    # Initial guess for optimizer-controlled parameters
     key_opt = jax.random.PRNGKey(0)
-    p_initial = jax.random.normal(key_opt, shape=(2 * M_opt,)) * 0.01
+    p_initial = jax.random.normal(key_opt, shape=(2 * config.M_opt,)) * 0.01
 
-    t = jnp.linspace(0.001, T, N)
-
-    # Define the objective function to minimize, with p_user as a constant parameter
+    # Define the objective function to minimize, with config encapsulating all parameters
     def objective_function(p_opt):
-        return action_to_minimize(
-            p_opt, p_user, t, C, M_opt, M_user, T, perturbation_strength, n_opt, n_user
-        )
+        return action_to_minimize(p_opt, config)
 
     # Run optimizations
     results = run_optimizations(
@@ -77,15 +59,8 @@ def main():
 
     # Print results and plot
     print_optimization_results(results['action_values'], results['times_taken'])
-    plot_f_vs_ft(
-        results['optimized_params'], p_user, t, f, p_initial,
-        M_opt, M_user, T, perturbation_strength, n_opt, n_user
-    )
-    plot_deviation_from_f(
-        results['optimized_params'], p_user, t, f, p_initial,
-        M_opt, M_user, T, perturbation_strength, n_opt, n_user
-    )
+    plot_f_vs_ft(results['optimized_params'], f, p_initial, config)
+    plot_deviation_from_f(results['optimized_params'], f, p_initial, config)
 
 if __name__ == "__main__":
     main()
-
