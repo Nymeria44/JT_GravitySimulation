@@ -4,7 +4,6 @@ import matplotlib
 import os
 
 from schwarzianJAX import (
-    f,
     run_optimizations,
     action_to_minimize,
     print_optimization_results,
@@ -34,9 +33,9 @@ def main():
     # Initialize perturbation configuration, including user and optimizer parameters
     PertConfig = PerturbationConfig(
         T=1000.0,
-        N=100000,
+        N=1000000,
         C=1.0,
-        perturbation_strength=100000,
+        perturbation_strength=10000,
         M_user=10,
         M_opt=15
     )
@@ -58,8 +57,8 @@ def main():
 
     # Print results and plot
     print_optimization_results(results['action_values'], results['times_taken'])
-    plot_f_vs_ft(results['optimized_params'], f, p_initial, PertConfig )
-    plot_deviation_from_f(results['optimized_params'], f, p_initial, PertConfig)
+    plot_f_vs_ft(results['optimized_params'], p_initial, PertConfig )
+    plot_deviation_from_f(results['optimized_params'], p_initial, PertConfig)
 
 if __name__ == "__main__":
     main()

@@ -57,45 +57,38 @@ def calculate_delta_f(t, p, M, T, n, order=0):
     delta_f = jnp.dot(sin_coeffs * factor, sin_terms) + jnp.dot(cos_coeffs * factor, cos_terms)
     return delta_f
 
-# Define f(t) with optimizer and user perturbations
-def f(p_opt, config: PerturbationConfig):
-    # Use precomputed harmonic indices and time array from config
+def calculate_f(p_opt, config: PerturbationConfig, order=0):
+    """
+    Generalized function to calculate f(t) and its derivatives up to the specified order.
+    
+    Parameters:
+    - p_opt: Optimizer-controlled Fourier coefficients
+    - config: PerturbationConfig object containing user and optimizer parameters
+    - order: The derivative order (0 for f(t), 1 for f'(t), etc.)
+
+    Returns:
+    - f_derivative: The specified derivative of f(t)
+    """
     t = config.t
-    delta_f_user = calculate_delta_f(t, config.p_user, config.M_user, config.T, config.n_user)
-    delta_f_opt = calculate_delta_f(t, p_opt, config.M_opt, config.T, config.n_opt)
 
-    # Total perturbation
-    return t + delta_f_user + delta_f_opt
+    # User perturbation derivative of the specified order
+    delta_f_user = calculate_delta_f(t, config.p_user, config.M_user, config.T, config.n_user, order=order)
+    
+    # Optimizer perturbation derivative of the specified order
+    delta_f_opt = calculate_delta_f(t, p_opt, config.M_opt, config.T, config.n_opt, order=order)
 
-# First derivative f'(t)
-def f_prime(p_opt, config: PerturbationConfig):
-    t = config.t
-    delta_f_prime_user = calculate_delta_f(t, config.p_user, config.M_user, config.T, config.n_user, order=1)
-    delta_f_prime_opt = calculate_delta_f(t, p_opt, config.M_opt, config.T, config.n_opt, order=1)
+    # Combine user and optimizer perturbations with baseline
+    if order == 0:
+        return t + delta_f_user + delta_f_opt
+    else:
+        return delta_f_user + delta_f_opt + (1 if order == 1 else 0)
 
-    return 1 + delta_f_prime_user + delta_f_prime_opt
-
-# Second derivative f''(t)
-def f_double_prime(p_opt, config: PerturbationConfig):
-    t = config.t
-    delta_f_double_prime_user = calculate_delta_f(t, config.p_user, config.M_user, config.T, config.n_user, order=2)
-    delta_f_double_prime_opt = calculate_delta_f(t, p_opt, config.M_opt, config.T, config.n_opt, order=2)
-
-    return delta_f_double_prime_user + delta_f_double_prime_opt
-
-# Third derivative f'''(t)
-def f_triple_prime(p_opt, config: PerturbationConfig):
-    t = config.t
-    delta_f_triple_prime_user = calculate_delta_f(t, config.p_user, config.M_user, config.T, config.n_user, order=3)
-    delta_f_triple_prime_opt = calculate_delta_f(t, p_opt, config.M_opt, config.T, config.n_opt, order=3)
-
-    return delta_f_triple_prime_user + delta_f_triple_prime_opt
 
 # Define the Schwarzian derivative
 def schwarzian_derivative(p_opt, config: PerturbationConfig):
-    fp = f_prime(p_opt, config)
-    fpp = f_double_prime(p_opt, config)
-    fppp = f_triple_prime(p_opt, config)
+    fp = calculate_f(p_opt, config, 1)
+    fpp = calculate_f(p_opt, config, 2)
+    fppp = calculate_f(p_opt, config, 3)
     S = fppp / fp - 1.5 * (fpp / fp) ** 2
     return S
 
@@ -172,7 +165,7 @@ def print_optimization_results(action_values, times_taken):
         print(f"{method_name}: {action_value} | Time Taken: {times_taken[method_name]:.4f} seconds")
 
 
-def plot_f_vs_ft(optimized_params, f, p_initial, config: PerturbationConfig):
+def plot_f_vs_ft(optimized_params, p_initial, config: PerturbationConfig):
     """
     Plot the optimized function f(t) for each optimization method.
 
@@ -190,7 +183,7 @@ def plot_f_vs_ft(optimized_params, f, p_initial, config: PerturbationConfig):
     for method, p_optimal in optimized_params.items():
         if isinstance(p_optimal, jnp.ndarray) and p_optimal.shape == expected_shape:
             # Calculate f_optimal using config and optimized parameters
-            f_optimal = f(p_optimal, config)
+            f_optimal = calculate_f(p_optimal, config, 0)
             plt.plot(t, f_optimal, label=f"Optimized f(t) using {method}")
         else:
             print(f"Skipping {method} due to incompatible result shape or type.")
@@ -201,7 +194,7 @@ def plot_f_vs_ft(optimized_params, f, p_initial, config: PerturbationConfig):
     plt.legend()
     plt.show()
 
-def plot_deviation_from_f(optimized_params, f, p_initial, config: PerturbationConfig):
+def plot_deviation_from_f(optimized_params, p_initial, config: PerturbationConfig):
     """
     Plot the deviation of f(t) from linearity for each optimization method.
 
@@ -219,7 +212,7 @@ def plot_deviation_from_f(optimized_params, f, p_initial, config: PerturbationCo
     for method, p_optimal in optimized_params.items():
         if isinstance(p_optimal, jnp.ndarray) and p_optimal.shape == expected_shape:
             # Calculate f_optimal using config and optimized parameters
-            f_optimal = f(p_optimal, config)
+            f_optimal = calculate_f(p_optimal, config, 0)
             f_t_minus_t = f_optimal - t
             plt.plot(t, f_t_minus_t, label=f"Deviation (f(t) - t) using {method}")
         else:
