@@ -3,7 +3,7 @@ import jax
 import matplotlib
 import os
 
-from schwarzianJAX import (
+from schwarzian import (
     run_optimizations,
     action_to_minimize,
     print_optimization_results,

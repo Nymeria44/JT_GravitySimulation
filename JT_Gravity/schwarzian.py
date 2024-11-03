@@ -1,86 +1,225 @@
-# schwarzian.py
+# schwarzianJAX.py
 
-from sympy import diff, simplify, lambdify
-from scipy.integrate import quad
+import jax.numpy as jnp
+import matplotlib.pyplot as plt
 
-def schwarzian_der(f, x):
+# Custom Imports from `optimisations.py`
+from optimisations import (
+    run_bfgs_optimization,
+    run_adam_optimization,
+    run_optax_adam_optimization,
+    run_newtons_method,
+    run_hessian_optimization,
+    run_yogi_optimization,
+    run_lbfgs_optimization,
+    run_adabelief_optimization,
+)
+
+from config import PerturbationConfig  # Import the configuration class
+
+def calculate_delta_f(t, p, M, T, n, order=0):
     """
-    Compute the Schwarzian derivative of a function f with respect to x.
+    Calculate the Fourier series terms and its derivatives up to a specified order.
 
     Parameters:
-    f : sympy expression
-        The function f(x) as a SymPy expression.
-    x : sympy symbol
-        The independent variable.
+    - t: time variable
+    - p: Fourier coefficients (sin and cos combined)
+    - M: Number of terms in each series (sin and cos)
+    - T: Period
+    - n: Array of harmonic indices
+    - order: The derivative order (0 for the function itself, 1 for first derivative, etc.)
 
     Returns:
-    sympy expression
-        The Schwarzian derivative S(f)(x).
+    - delta_f: Fourier series perturbation or its derivative
     """
-    # Compute the first three derivatives of f
-    f_prime = diff(f, x)
-    f_double_prime = diff(f_prime, x)
-    f_triple_prime = diff(f_double_prime, x)
+    # Separate sine and cosine coefficients
+    sin_coeffs = p[:M]
+    cos_coeffs = p[M:]
     
-    # Compute the Schwarzian derivative
-    S = f_triple_prime / f_prime - (3/2) * (f_double_prime / f_prime)**2
+    # Calculate frequency factor based on derivative order
+    factor = (2 * jnp.pi * n / T) ** order
     
-    # Simplify the expression
-    S_simplified = simplify(S)
-    
-    return S_simplified
+    # Calculate sine and cosine terms, adjusting for derivative order
+    if order % 4 == 0:  # No change in sin/cos phase
+        sin_terms = jnp.sin(2 * jnp.pi * n[:, None] * t[None, :] / T)
+        cos_terms = jnp.cos(2 * jnp.pi * n[:, None] * t[None, :] / T)
+    elif order % 4 == 1:  # First derivative
+        sin_terms = jnp.cos(2 * jnp.pi * n[:, None] * t[None, :] / T)
+        cos_terms = -jnp.sin(2 * jnp.pi * n[:, None] * t[None, :] / T)
+    elif order % 4 == 2:  # Second derivative
+        sin_terms = -jnp.sin(2 * jnp.pi * n[:, None] * t[None, :] / T)
+        cos_terms = -jnp.cos(2 * jnp.pi * n[:, None] * t[None, :] / T)
+    else:  # Third derivative
+        sin_terms = -jnp.cos(2 * jnp.pi * n[:, None] * t[None, :] / T)
+        cos_terms = jnp.sin(2 * jnp.pi * n[:, None] * t[None, :] / T)
 
-def schwarzian_action(f, x, t0, t1, C=1, numerical=False, subs=None):
+    # Apply factor for each order to coefficients and calculate delta_f
+    delta_f = jnp.dot(sin_coeffs * factor, sin_terms) + jnp.dot(cos_coeffs * factor, cos_terms)
+    return delta_f
+
+def calculate_f(p_opt, config: PerturbationConfig, order=0):
     """
-    Compute the Schwarzian action of a function f over the interval [t0, t1].
+    Generalized function to calculate f(t) and its derivatives up to the specified order.
     
     Parameters:
-    f : sympy expression
-        The function f(x) as a SymPy expression.
-    x : sympy symbol
-        The independent variable.
-    t0 : float
-        The lower limit of integration.
-    t1 : float
-        The upper limit of integration.
-    C : float, optional
-        The constant coefficient in the Schwarzian action. Default is 1.
-    numerical : bool, optional
-        If True, perform numerical integration. If False, attempt symbolic integration.
-    subs : dict, optional
-        A dictionary of substitutions to be made in the expression before evaluation.
-    
+    - p_opt: Optimizer-controlled Fourier coefficients
+    - config: PerturbationConfig object containing user and optimizer parameters
+    - order: The derivative order (0 for f(t), 1 for f'(t), etc.)
+
     Returns:
-    float or sympy expression
-        The value of the Schwarzian action.
+    - f_derivative: The specified derivative of f(t)
     """
-    # Compute the Schwarzian derivative
-    S = schwarzian_der(f, x)
+    t = config.t
+
+    # User perturbation derivative of the specified order
+    delta_f_user = calculate_delta_f(t, config.p_user, config.M_user, config.T, config.n_user, order=order)
     
-    if subs is not None:
-        # Substitute numerical values into S and f
-        S = S.subs(subs)
-        f = f.subs(subs)
-    
-    if numerical:
-        # Convert S to a numerical function
-        S_func = lambdify(x, S, modules=['numpy'])
-        
-        # Perform numerical integration
-        integral, error = quad(S_func, t0, t1)
-        
-        # Compute the action
-        action = C * integral
-        
-        return action
+    # Optimizer perturbation derivative of the specified order
+    delta_f_opt = calculate_delta_f(t, p_opt, config.M_opt, config.T, config.n_opt, order=order)
+
+    # Combine user and optimizer perturbations with baseline
+    if order == 0:
+        return t + delta_f_user + delta_f_opt
     else:
-        # Perform symbolic integration
-        from sympy import integrate
-        
-        # Integrate S over [t0, t1]
-        action = C * integrate(S, (x, t0, t1))
-        
-        # Simplify the result
-        action_simplified = simplify(action)
-        
-        return action_simplified
+        return delta_f_user + delta_f_opt + (1 if order == 1 else 0)
+
+
+# Define the Schwarzian derivative
+def schwarzian_derivative(p_opt, config: PerturbationConfig):
+    fp = calculate_f(p_opt, config, 1)
+    fpp = calculate_f(p_opt, config, 2)
+    fppp = calculate_f(p_opt, config, 3)
+    S = fppp / fp - 1.5 * (fpp / fp) ** 2
+    return S
+
+# Trapezoidal integration
+def jax_trapz(y, x):
+    dx = jnp.diff(x)
+    return jnp.sum((y[:-1] + y[1:]) * dx / 2.0)
+
+# Define the Schwarzian action
+def schwarzian_action(p_opt, config: PerturbationConfig):
+    S = schwarzian_derivative(p_opt, config)
+    action = -config.C * jax_trapz(S, config.t)
+    return action
+
+# Objective function to minimize (only p_opt is optimized)
+def action_to_minimize(p_opt, config: PerturbationConfig):
+    return schwarzian_action(p_opt, config)
+
+def run_optimizations(action_to_minimize, p_initial, config):
+    """
+    Executes specified optimization methods based on the configuration.
+
+    Parameters:
+    - action_to_minimize (function): The function to minimize.
+    - p_initial (array): Initial parameter guess.
+    - config (dict): Configuration dict specifying which optimizers to use.
+
+    Returns:
+    - dict: A dictionary with method names as keys and optimized results as values.
+    """
+
+    # Define a list of optimization methods based on the configuration
+    optimization_methods = [
+        ("BFGS", run_bfgs_optimization, (action_to_minimize, p_initial)) if config["BFGS"] else None,
+        ("Adam (JAX)", run_adam_optimization, (action_to_minimize, p_initial)) if config["Adam (JAX)"] else None,
+        ("Adam (Optax)", run_optax_adam_optimization, (action_to_minimize, p_initial)) if config["Adam (Optax)"] else None,
+        ("Yogi", run_yogi_optimization, (action_to_minimize, p_initial)) if config["Yogi"] else None,
+        ("LBFGS", run_lbfgs_optimization, (action_to_minimize, p_initial)) if config["LBFGS"] else None,
+        ("AdaBelief", run_adabelief_optimization, (action_to_minimize, p_initial)) if config["AdaBelief"] else None,
+        ("Newton's Method", run_newtons_method, (action_to_minimize, p_initial)) if config["Newton's Method"] else None,
+        ("Hessian-based Optimization", run_hessian_optimization, (action_to_minimize, p_initial)) if config["Hessian-based Optimization"] else None
+    ]
+
+    # Filter out None values (disabled methods)
+    optimization_methods = [method for method in optimization_methods if method is not None]
+
+    # Initialize dictionaries to store results
+    results = {
+        "optimized_params": {},
+        "action_values": {},
+        "times_taken": {}
+    }
+
+    # Run each optimization method and collect results
+    for method_name, optimization_function, args in optimization_methods:
+        p_optimal, action_value, time_taken = optimization_function(*args)
+        results["optimized_params"][method_name] = p_optimal
+        results["action_values"][method_name] = action_value
+        results["times_taken"][method_name] = time_taken
+
+    return results
+
+def print_optimization_results(action_values, times_taken):
+    """
+    Print the final action values and computation time for each optimization method.
+
+    Parameters:
+    - action_values (dict): Final action values from each optimizer.
+    - times_taken (dict): Computation time taken for each optimizer.
+    """
+
+    print("\nFinal Action Values and Time Comparison:")
+    for method_name, action_value in action_values.items():
+        print(f"{method_name}: {action_value} | Time Taken: {times_taken[method_name]:.4f} seconds")
+
+
+def plot_f_vs_ft(optimized_params, p_initial, config: PerturbationConfig):
+    """
+    Plot the optimized function f(t) for each optimization method.
+
+    Parameters:
+    - optimized_params (dict): Optimized parameters for each method.
+    - f (function): Function to calculate f(t, p_opt, using config).
+    - p_initial (array): Initial optimizer parameter array.
+    - config (PerturbationConfig): Configuration instance containing all necessary parameters.
+    """
+
+    expected_shape = p_initial.shape
+    t = config.t  # Time grid from config
+    plt.figure(figsize=(12, 8))
+
+    for method, p_optimal in optimized_params.items():
+        if isinstance(p_optimal, jnp.ndarray) and p_optimal.shape == expected_shape:
+            # Calculate f_optimal using config and optimized parameters
+            f_optimal = calculate_f(p_optimal, config, 0)
+            plt.plot(t, f_optimal, label=f"Optimized f(t) using {method}")
+        else:
+            print(f"Skipping {method} due to incompatible result shape or type.")
+
+    plt.xlabel("t")
+    plt.ylabel("f(t)")
+    plt.title("Optimized Reparameterization of f(t) for Each Method")
+    plt.legend()
+    plt.show()
+
+def plot_deviation_from_f(optimized_params, p_initial, config: PerturbationConfig):
+    """
+    Plot the deviation of f(t) from linearity for each optimization method.
+
+    Parameters:
+    - optimized_params (dict): Optimized parameters for each method.
+    - f (function): Function to calculate f(t, p_opt, using config).
+    - p_initial (array): Initial optimizer parameter array.
+    - config (PerturbationConfig): Configuration instance containing all necessary parameters.
+    """
+
+    expected_shape = p_initial.shape
+    t = config.t  # Time grid from config
+    plt.figure(figsize=(12, 8))
+
+    for method, p_optimal in optimized_params.items():
+        if isinstance(p_optimal, jnp.ndarray) and p_optimal.shape == expected_shape:
+            # Calculate f_optimal using config and optimized parameters
+            f_optimal = calculate_f(p_optimal, config, 0)
+            f_t_minus_t = f_optimal - t
+            plt.plot(t, f_t_minus_t, label=f"Deviation (f(t) - t) using {method}")
+        else:
+            print(f"Skipping {method} due to incompatible result shape or type.")
+
+    plt.xlabel("t")
+    plt.ylabel("f(t) - t")
+    plt.title("Deviation of Optimized f(t) from Linearity for Each Method")
+    plt.legend()
+    plt.show()
