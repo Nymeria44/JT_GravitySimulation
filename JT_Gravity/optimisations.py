@@ -1,5 +1,8 @@
+# optimisations.py
+
 import time
 import jax
+from jax import grad
 import jax.numpy as jnp
 from jax.scipy.optimize import minimize
 from jax.example_libraries import optimizers
@@ -74,9 +77,14 @@ def run_optax_adam_optimization(action_to_minimize, p_initial):
     action_value_adam = action_to_minimize(params)
     return params, action_value_adam, end_time - start_time
 
-def run_newtons_method(action_to_minimize, grad_action, hessian_action, p_initial):
+def run_newtons_method(action_to_minimize, p_initial):
+    
     p_newton = p_initial
     start_time = time.time()
+
+    grad_action = grad(action_to_minimize)
+    hessian_action = jax.hessian(action_to_minimize)
+
     for i in range(NUM_STEPS_NEWTON):
         grad_val = grad_action(p_newton)
         hess_val = hessian_action(p_newton)
@@ -87,9 +95,14 @@ def run_newtons_method(action_to_minimize, grad_action, hessian_action, p_initia
     action_value_newton = action_to_minimize(p_newton)
     return p_newton, action_value_newton, end_time - start_time
 
-def run_hessian_optimization(action_to_minimize, grad_action, hessian_action, p_initial):
+def run_hessian_optimization(action_to_minimize, p_initial):
+
     p_hessian = p_initial
     start_time = time.time()
+
+    grad_action = grad(action_to_minimize)
+    hessian_action = jax.hessian(action_to_minimize)
+
     for i in range(NUM_STEPS_HESSIAN):
         grad_val = grad_action(p_hessian)
         hess_val = hessian_action(p_hessian)
@@ -120,9 +133,9 @@ def run_yogi_optimization(action_to_minimize, p_initial):
     action_value_yogi = action_to_minimize(params)
     return params, action_value_yogi, end_time - start_time
 
-def run_lbfgs_optimization(action_to_minimize, p_initial, num_steps=NUM_STEPS_LBFGS, learning_rate=STEP_SIZE_LBFGS):
+def run_lbfgs_optimization(action_to_minimize, p_initial):
     # Initialize LBFGS optimizer with optional learning rate
-    optimizer = optax.lbfgs(learning_rate=learning_rate)
+    optimizer = optax.lbfgs(learning_rate=STEP_SIZE_LBFGS)
     opt_state = optimizer.init(p_initial)
     
     @jax.jit
@@ -142,7 +155,7 @@ def run_lbfgs_optimization(action_to_minimize, p_initial, num_steps=NUM_STEPS_LB
     # Run the optimization for a specified number of steps
     start_time = time.time()
     params = p_initial
-    for i in range(num_steps):  # Limit iterations with this loop
+    for i in range(NUM_STEPS_LBFGS):  # Limit iterations with this loop
         opt_state, params = lbfgs_step(i, opt_state, params)
     
     end_time = time.time()

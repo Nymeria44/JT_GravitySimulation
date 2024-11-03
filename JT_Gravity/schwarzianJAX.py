@@ -1,10 +1,7 @@
-import jax
+# schwarzianJAX.py
+
 import jax.numpy as jnp
-from jax import grad
-import matplotlib
-matplotlib.use('TkAgg')  # or 'Qt5Agg'
 import matplotlib.pyplot as plt
-import os
 
 # Custom Imports from `optimisations.py`
 from optimisations import (
@@ -18,38 +15,8 @@ from optimisations import (
     run_adabelief_optimization,
 )
 
-# Configuration dictionary to enable/disable specific optimizers
-OPTIMIZER_CONFIG = {
-    "BFGS": True,
-    "Adam (JAX)": True,
-    "Adam (Optax)": True,
-    "Yogi": True,
-    "LBFGS": True,
-    "AdaBelief": True,
-    "Newton's Method": False,
-    "Hessian-based Optimization": False
-}
-
-# Constants and setup
-os.environ['XLA_FLAGS'] = '--xla_gpu_triton_gemm_any=True'
-
-C = 1.0    # Gravitational coupling constant
-T = 100.0  # Period for integration
-N = 10000  # Number of time steps
-perturbation_strength = 100
-t = jnp.linspace(0.001, T, N)  # Time grid
-
-# Number of basis functions
-M = 40
-n = jnp.arange(1, M + 1)  # Frequencies from 1 to M
-
-# Initial parameters (small random perturbation)
-key = jax.random.PRNGKey(0)
-p_initial = jax.random.normal(key, shape=(2 * M,)) * 0.01  # Updated to include both sine and cosine coefficients
-
 # Define f(t, p) with both sine and cosine terms
-def f(t, p):
-    M = p.shape[0] // 2
+def f(t, p, M, T, perturbation_strength, n):
     sin_coeffs = p[:M] * perturbation_strength
     cos_coeffs = p[M:] * perturbation_strength
     sin_terms = jnp.sin(2 * jnp.pi * n[:, None] * t[None, :] / T)
@@ -58,8 +25,7 @@ def f(t, p):
     return t + delta_f
 
 # First derivative f'(t)
-def f_prime(t, p):
-    M = p.shape[0] // 2
+def f_prime(t, p, M, T, perturbation_strength, n):
     sin_coeffs = p[:M] * perturbation_strength
     cos_coeffs = p[M:] * perturbation_strength
     sin_deriv = jnp.cos(2 * jnp.pi * n[:, None] * t[None, :] / T)
@@ -68,8 +34,7 @@ def f_prime(t, p):
     return 1 + delta_f_prime
 
 # Second derivative f''(t)
-def f_double_prime(t, p):
-    M = p.shape[0] // 2
+def f_double_prime(t, p, M, T, perturbation_strength, n):
     sin_coeffs = p[:M] * perturbation_strength
     cos_coeffs = p[M:] * perturbation_strength
     sin_double_deriv = -jnp.sin(2 * jnp.pi * n[:, None] * t[None, :] / T)
@@ -78,8 +43,7 @@ def f_double_prime(t, p):
     return delta_f_double_prime
 
 # Third derivative f'''(t)
-def f_triple_prime(t, p):
-    M = p.shape[0] // 2
+def f_triple_prime(t, p, M, T, perturbation_strength, n):
     sin_coeffs = p[:M] * perturbation_strength
     cos_coeffs = p[M:] * perturbation_strength
     sin_triple_deriv = -jnp.cos(2 * jnp.pi * n[:, None] * t[None, :] / T)
@@ -88,10 +52,10 @@ def f_triple_prime(t, p):
     return delta_f_triple_prime
 
 # Define the Schwarzian derivative
-def schwarzian_derivative(t, p):
-    fp = f_prime(t, p)
-    fpp = f_double_prime(t, p)
-    fppp = f_triple_prime(t, p)
+def schwarzian_derivative(t, p, M, T, perturbation_strength, n):
+    fp = f_prime(t, p, M, T, perturbation_strength, n)
+    fpp = f_double_prime(t, p, M, T, perturbation_strength, n)
+    fppp = f_triple_prime(t, p, M, T, perturbation_strength, n)
     S = fppp / fp - 1.5 * (fpp / fp) ** 2
     return S
 
@@ -101,79 +65,126 @@ def jax_trapz(y, x):
     return jnp.sum((y[:-1] + y[1:]) * dx / 2.0)
 
 # Define the Schwarzian action
-def schwarzian_action(p):
-    S = schwarzian_derivative(t, p)
+def schwarzian_action(p, t, C, M, T, perturbation_strength, n):
+    S = schwarzian_derivative(t, p, M, T, perturbation_strength, n)
     action = -C * jax_trapz(S, t)
     return action
 
 # Objective function to minimize
-def action_to_minimize(p):
-    return schwarzian_action(p)
+def action_to_minimize(p, t, C, M, T, perturbation_strength, n):
+    return schwarzian_action(p, t, C, M, T, perturbation_strength, n)
 
-# Compute gradient and Hessian of the action
-grad_action = grad(action_to_minimize)
-hessian_action = jax.hessian(action_to_minimize)
+def run_optimizations(action_to_minimize, p_initial, config):
+    """
+    Executes specified optimization methods based on the configuration.
 
-# Define a list of optimization methods, respecting the configuration dictionary
-optimization_methods = [
-    ("BFGS", run_bfgs_optimization, (action_to_minimize, p_initial)) if OPTIMIZER_CONFIG["BFGS"] else None,
-    ("Adam (JAX)", run_adam_optimization, (action_to_minimize, p_initial)) if OPTIMIZER_CONFIG["Adam (JAX)"] else None,
-    ("Adam (Optax)", run_optax_adam_optimization, (action_to_minimize, p_initial)) if OPTIMIZER_CONFIG["Adam (Optax)"] else None,
-    ("Yogi", run_yogi_optimization, (action_to_minimize, p_initial)) if OPTIMIZER_CONFIG["Yogi"] else None,
-    ("LBFGS", run_lbfgs_optimization, (action_to_minimize, p_initial)) if OPTIMIZER_CONFIG["LBFGS"] else None,
-    ("AdaBelief", run_adabelief_optimization, (action_to_minimize, p_initial)) if OPTIMIZER_CONFIG["AdaBelief"] else None,
-    ("Newton's Method", run_newtons_method, (action_to_minimize, grad_action, hessian_action, p_initial)) if OPTIMIZER_CONFIG["Newton's Method"] else None,
-    ("Hessian-based Optimization", run_hessian_optimization, (action_to_minimize, grad_action, hessian_action, p_initial)) if OPTIMIZER_CONFIG["Hessian-based Optimization"] else None
-]
+    Parameters:
+    - action_to_minimize (function): The function to minimize.
+    - p_initial (array): Initial parameter guess.
+    - config (dict): Configuration dict specifying which optimizers to use.
 
-# Filter out `None` values from the list (i.e., disabled methods)
-optimization_methods = [method for method in optimization_methods if method is not None]
+    Returns:
+    - dict: A dictionary with method names as keys and optimized results as values.
+    """
 
-# Initialize dictionaries to store results
-optimized_params = {}
-action_values = {}
-times_taken = {}
+    # Define a list of optimization methods based on the configuration
+    optimization_methods = [
+        ("BFGS", run_bfgs_optimization, (action_to_minimize, p_initial)) if config["BFGS"] else None,
+        ("Adam (JAX)", run_adam_optimization, (action_to_minimize, p_initial)) if config["Adam (JAX)"] else None,
+        ("Adam (Optax)", run_optax_adam_optimization, (action_to_minimize, p_initial)) if config["Adam (Optax)"] else None,
+        ("Yogi", run_yogi_optimization, (action_to_minimize, p_initial)) if config["Yogi"] else None,
+        ("LBFGS", run_lbfgs_optimization, (action_to_minimize, p_initial)) if config["LBFGS"] else None,
+        ("AdaBelief", run_adabelief_optimization, (action_to_minimize, p_initial)) if config["AdaBelief"] else None,
+        ("Newton's Method", run_newtons_method, (action_to_minimize, p_initial)) if config["Newton's Method"] else None,
+        ("Hessian-based Optimization", run_hessian_optimization, (action_to_minimize, p_initial)) if config["Hessian-based Optimization"] else None
+    ]
 
-# Run and time each optimization method
-for method_name, optimization_function, args in optimization_methods:
-    p_optimal, action_value, time_taken = optimization_function(*args)
-    optimized_params[method_name] = p_optimal
-    action_values[method_name] = action_value
-    times_taken[method_name] = time_taken
+    # Filter out None values (disabled methods)
+    optimization_methods = [method for method in optimization_methods if method is not None]
 
-# Final Comparison
-print("\nFinal Action Values and Time Comparison:")
-for method_name in action_values:
-    print(f"{method_name}: {action_values[method_name]} | Time Taken: {times_taken[method_name]:.4f} seconds")
+    # Initialize dictionaries to store results
+    results = {
+        "optimized_params": {},
+        "action_values": {},
+        "times_taken": {}
+    }
 
-# Plot f(t) for each optimization method
-expected_shape = p_initial.shape
-plt.figure(figsize=(12, 8))
-for method, p_optimal in optimized_params.items():
-    if isinstance(p_optimal, jnp.ndarray) and p_optimal.shape == expected_shape:
-        f_optimal = f(t, p_optimal)
-        plt.plot(t, f_optimal, label=f"Optimized f(t) using {method}")
-    else:
-        print(f"Skipping {method} due to incompatible result shape or type.")
+    # Run each optimization method and collect results
+    for method_name, optimization_function, args in optimization_methods:
+        p_optimal, action_value, time_taken = optimization_function(*args)
+        results["optimized_params"][method_name] = p_optimal
+        results["action_values"][method_name] = action_value
+        results["times_taken"][method_name] = time_taken
 
-plt.xlabel("t")
-plt.ylabel("f(t)")
-plt.title("Optimized Reparametrisation of f(t) for Each Method")
-plt.legend()
-plt.show()
+    return results
 
-# Plot deviation from linearity for each optimization method
-plt.figure(figsize=(12, 8))
-for method, p_optimal in optimized_params.items():
-    if isinstance(p_optimal, jnp.ndarray) and p_optimal.shape == expected_shape:
-        f_optimal = f(t, p_optimal)
-        f_t_minus_t = f_optimal - t
-        plt.plot(t, f_t_minus_t, label=f"Deviation (f(t) - t) using {method}")
-    else:
-        print(f"Skipping {method} due to incompatible result shape or type.")
 
-plt.xlabel("t")
-plt.ylabel("f(t) - t")
-plt.title("Deviation of Optimized f(t) from Linearity for Each Method")
-plt.legend()
-plt.show()
+def print_optimization_results(action_values, times_taken):
+    """
+    Print the final action values and computation time for each optimization method.
+    
+    Parameters:
+    - action_values (dict): Final action values from each optimizer.
+    - times_taken (dict): Computation time taken for each optimizer.
+    """
+
+    print("\nFinal Action Values and Time Comparison:")
+    for method_name, action_value in action_values.items():
+        print(f"{method_name}: {action_value} | Time Taken: {times_taken[method_name]:.4f} seconds")
+
+def plot_f_vs_ft(optimized_params, t, f, p_initial, M, T, perturbation_strength, n):
+    """
+    Plot the optimized function f(t) for each optimization method.
+    
+    Parameters:
+    - optimized_params (dict): Optimized parameters for each method.
+    - t (array): Time grid.
+    - f (function): Function to calculate f(t, p).
+    - p_initial (array): Initial parameter array to check shape.
+    - M, T, perturbation_strength, n: Additional parameters for f.
+    """
+
+    expected_shape = p_initial.shape
+    plt.figure(figsize=(12, 8))
+    
+    for method, p_optimal in optimized_params.items():
+        if isinstance(p_optimal, jnp.ndarray) and p_optimal.shape == expected_shape:
+            f_optimal = f(t, p_optimal, M, T, perturbation_strength, n)
+            plt.plot(t, f_optimal, label=f"Optimized f(t) using {method}")
+        else:
+            print(f"Skipping {method} due to incompatible result shape or type.")
+
+    plt.xlabel("t")
+    plt.ylabel("f(t)")
+    plt.title("Optimized Reparametrisation of f(t) for Each Method")
+    plt.legend()
+    plt.show()
+
+def plot_deviation_from_f(optimized_params, t, f, p_initial, M, T, perturbation_strength, n):
+    """
+    Plot the deviation of f(t) from linearity for each optimization method.
+    
+    Parameters:
+    - optimized_params (dict): Optimized parameters for each method.
+    - t (array): Time grid.
+    - f (function): Function to calculate f(t, p).
+    - p_initial (array): Initial parameter array to check shape.
+    - M, T, perturbation_strength, n: Additional parameters for f.
+    """
+
+    expected_shape = p_initial.shape
+    plt.figure(figsize=(12, 8))
+    
+    for method, p_optimal in optimized_params.items():
+        if isinstance(p_optimal, jnp.ndarray) and p_optimal.shape == expected_shape:
+            f_optimal = f(t, p_optimal, M, T, perturbation_strength, n)
+            f_t_minus_t = f_optimal - t
+            plt.plot(t, f_t_minus_t, label=f"Deviation (f(t) - t) using {method}")
+        else:
+            print(f"Skipping {method} due to incompatible result shape or type.")
+
+    plt.xlabel("t")
+    plt.ylabel("f(t) - t")
+    plt.title("Deviation of Optimized f(t) from Linearity for Each Method")
+    plt.legend()
+    plt.show()

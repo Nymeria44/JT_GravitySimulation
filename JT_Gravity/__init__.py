@@ -1,61 +1,58 @@
-# __init__.py
-import numpy as np
-import matplotlib.pyplot as plt
-from sympy import symbols, sin, lambdify
-from schwarzian import schwarzian_action
+# __init__.py file for JT_Gravity package
+import jax
+import jax.numpy as jnp
+from jax import grad
+import matplotlib
+import os
 
-# Define symbolic variables
-t = symbols('t')
-epsilon, omega = symbols('epsilon omega')
-
-# Parameters for small perturbation
-epsilon_value = 0.01  # Small perturbation parameter
-omega_value = 2 * np.pi  # Frequency of the perturbation
-
-# Define the unperturbed boundary reparametrization
-f_unperturbed = t  # Unperturbed boundary function f(t) = t
-
-# Define the perturbed boundary reparametrization
-# delta_f_sym = sin(omega * t)             
-f_perturbed = t + epsilon * 50000
-
-# Integration limits
-t0 = 0
-t1 = 1
-
-# Compute the Schwarzian action for the unperturbed boundary
-action_unperturbed = schwarzian_action(
-    f_unperturbed, t, t0, t1, C=1, numerical=True
+from schwarzianJAX import (
+    f,
+    run_optimizations,
+    action_to_minimize,
+    print_optimization_results,
+    plot_f_vs_ft,
+    plot_deviation_from_f
 )
 
-# Compute the Schwarzian action for the perturbed boundary
-action_perturbed = schwarzian_action(
-    f_perturbed, t, t0, t1, C=1, numerical=True, subs={epsilon: epsilon_value, omega: omega_value}
-)
+# Environment setup
+os.environ['XLA_FLAGS'] = '--xla_gpu_triton_gemm_any=True'
+matplotlib.use('TkAgg')
 
-# Output the results for comparison
-print(f"Schwarzian Action for the unperturbed boundary: {action_unperturbed}")
-print(f"Schwarzian Action for the perturbed boundary: {action_perturbed}")
-print(f"Difference due to perturbation: {action_perturbed - action_unperturbed}")
+# Configuration dictionary to enable/disable specific optimizers
+OPTIMIZER_CONFIG = {
+    "BFGS": False,
+    "Adam (JAX)": True,
+    "Adam (Optax)": True,
+    "Yogi": True,
+    "LBFGS": True,
+    "AdaBelief": True,
+    "Newton's Method": False,
+    "Hessian-based Optimization": False 
+}
 
-# Substitute numerical values into the perturbed and unperturbed functions
-f_perturbed_numeric = f_perturbed.subs({epsilon: epsilon_value, omega: omega_value})
-f_perturbed_func = lambdify(t, f_perturbed_numeric, modules=['numpy'])
-f_unperturbed_func = lambdify(t, f_unperturbed, modules=['numpy'])
+def main():
+    # Set up constants and initial parameters
+    T, N, C, perturbation_strength, M = 100.0, 100, 1.0, 100, 40
+    t = jnp.linspace(0.001, T, N)
+    n = jnp.arange(1, M + 1)
 
-# Generate time values for plotting
-t_values = np.linspace(t0, t1, 1000)
+    key = jax.random.PRNGKey(0)
+    p_initial = jax.random.normal(key, shape=(2 * M,)) * 0.01
 
-# Calculate the boundary reparametrizations
-f_perturbed_values = f_perturbed_func(t_values)
-f_unperturbed_values = f_unperturbed_func(t_values)
+    # Set optimizer configuration
+    config = OPTIMIZER_CONFIG
 
-# Plot the perturbed and unperturbed boundary reparametrizations
-plt.plot(t_values, f_unperturbed_values, label='Unperturbed Boundary f(t) = t')
-plt.plot(t_values, f_perturbed_values, label=f'Perturbed Boundary f(t) = t + ε * sin(ωt), ε = {epsilon_value}')
-plt.xlabel('t')
-plt.ylabel('f(t)')
-plt.title('Boundary Reparametrization: Perturbed vs. Unperturbed')
-plt.legend()
-plt.grid(True)
-plt.show()
+    # Run optimizations
+    results = run_optimizations(
+        action_to_minimize=lambda p: action_to_minimize(p, t, C, M, T, perturbation_strength, n),
+        p_initial=p_initial,
+        config=config
+    )
+
+    # Print results and plot
+    print_optimization_results(results['action_values'], results['times_taken'])
+    plot_f_vs_ft(results['optimized_params'], t, f, p_initial, M, T, perturbation_strength, n)
+    plot_deviation_from_f(results['optimized_params'], t, f, p_initial, M, T, perturbation_strength, n)
+
+if __name__ == "__main__":
+    main()
