@@ -15,47 +15,115 @@ from optimisations import (
     run_adabelief_optimization,
 )
 
-# Define f(t, p) with both sine and cosine terms
-def f(t, p, M, T, perturbation_strength, n):
-    sin_coeffs = p[:M] * perturbation_strength
-    cos_coeffs = p[M:] * perturbation_strength
-    sin_terms = jnp.sin(2 * jnp.pi * n[:, None] * t[None, :] / T)
-    cos_terms = jnp.cos(2 * jnp.pi * n[:, None] * t[None, :] / T)
-    delta_f = jnp.dot(sin_coeffs, sin_terms) + jnp.dot(cos_coeffs, cos_terms)
+# Define f(t, p_opt, p_user) with both optimizer-controlled and user-controlled perturbations
+def f(t, p_opt, p_user, M_opt, M_user, T, perturbation_strength, n_opt, n_user):
+    # Optimizer-controlled perturbation
+    sin_coeffs_opt = p_opt[:M_opt] 
+    cos_coeffs_opt = p_opt[M_opt:]
+    sin_terms_opt = jnp.sin(2 * jnp.pi * n_opt[:, None] * t[None, :] / T)
+    cos_terms_opt = jnp.cos(2 * jnp.pi * n_opt[:, None] * t[None, :] / T)
+    delta_f_opt = jnp.dot(sin_coeffs_opt, sin_terms_opt) + jnp.dot(cos_coeffs_opt, cos_terms_opt)
+
+    # User-controlled perturbation
+    sin_coeffs_user = p_user[:M_user] * perturbation_strength
+    cos_coeffs_user = p_user[M_user:] * perturbation_strength
+    sin_terms_user = jnp.sin(2 * jnp.pi * n_user[:, None] * t[None, :] / T)
+    cos_terms_user = jnp.cos(2 * jnp.pi * n_user[:, None] * t[None, :] / T)
+    delta_f_user = jnp.dot(sin_coeffs_user, sin_terms_user) + jnp.dot(cos_coeffs_user, cos_terms_user)
+
+    # Total perturbation
+    delta_f = delta_f_opt + delta_f_user
     return t + delta_f
 
 # First derivative f'(t)
-def f_prime(t, p, M, T, perturbation_strength, n):
-    sin_coeffs = p[:M] * perturbation_strength
-    cos_coeffs = p[M:] * perturbation_strength
-    sin_deriv = jnp.cos(2 * jnp.pi * n[:, None] * t[None, :] / T)
-    cos_deriv = -jnp.sin(2 * jnp.pi * n[:, None] * t[None, :] / T)
-    delta_f_prime = jnp.dot(sin_coeffs * (2 * jnp.pi * n / T), sin_deriv) + jnp.dot(cos_coeffs * (2 * jnp.pi * n / T), cos_deriv)
+def f_prime(t, p_opt, p_user, M_opt, M_user, T, perturbation_strength, n_opt, n_user):
+    # Optimizer-controlled perturbation derivatives
+    sin_coeffs_opt = p_opt[:M_opt]
+    cos_coeffs_opt = p_opt[M_opt:]
+    sin_deriv_opt = jnp.cos(2 * jnp.pi * n_opt[:, None] * t[None, :] / T)
+    cos_deriv_opt = -jnp.sin(2 * jnp.pi * n_opt[:, None] * t[None, :] / T)
+    delta_f_prime_opt = jnp.dot(
+        sin_coeffs_opt * (2 * jnp.pi * n_opt / T), sin_deriv_opt
+    ) + jnp.dot(
+        cos_coeffs_opt * (2 * jnp.pi * n_opt / T), cos_deriv_opt
+    )
+
+    # User-controlled perturbation derivatives
+    sin_coeffs_user = p_user[:M_user] * perturbation_strength
+    cos_coeffs_user = p_user[M_user:] * perturbation_strength
+    sin_deriv_user = jnp.cos(2 * jnp.pi * n_user[:, None] * t[None, :] / T)
+    cos_deriv_user = -jnp.sin(2 * jnp.pi * n_user[:, None] * t[None, :] / T)
+    delta_f_prime_user = jnp.dot(
+        sin_coeffs_user * (2 * jnp.pi * n_user / T), sin_deriv_user
+    ) + jnp.dot(
+        cos_coeffs_user * (2 * jnp.pi * n_user / T), cos_deriv_user
+    )
+
+    # Total derivative
+    delta_f_prime = delta_f_prime_opt + delta_f_prime_user
     return 1 + delta_f_prime
 
 # Second derivative f''(t)
-def f_double_prime(t, p, M, T, perturbation_strength, n):
-    sin_coeffs = p[:M] * perturbation_strength
-    cos_coeffs = p[M:] * perturbation_strength
-    sin_double_deriv = -jnp.sin(2 * jnp.pi * n[:, None] * t[None, :] / T)
-    cos_double_deriv = -jnp.cos(2 * jnp.pi * n[:, None] * t[None, :] / T)
-    delta_f_double_prime = jnp.dot(sin_coeffs * ((2 * jnp.pi * n / T) ** 2), sin_double_deriv) + jnp.dot(cos_coeffs * ((2 * jnp.pi * n / T) ** 2), cos_double_deriv)
+def f_double_prime(t, p_opt, p_user, M_opt, M_user, T, perturbation_strength, n_opt, n_user):
+    # Optimizer-controlled perturbation second derivatives
+    sin_coeffs_opt = p_opt[:M_opt]
+    cos_coeffs_opt = p_opt[M_opt:]
+    sin_double_deriv_opt = -jnp.sin(2 * jnp.pi * n_opt[:, None] * t[None, :] / T)
+    cos_double_deriv_opt = -jnp.cos(2 * jnp.pi * n_opt[:, None] * t[None, :] / T)
+    delta_f_double_prime_opt = jnp.dot(
+        sin_coeffs_opt * ((2 * jnp.pi * n_opt / T) ** 2), sin_double_deriv_opt
+    ) + jnp.dot(
+        cos_coeffs_opt * ((2 * jnp.pi * n_opt / T) ** 2), cos_double_deriv_opt
+    )
+
+    # User-controlled perturbation second derivatives
+    sin_coeffs_user = p_user[:M_user] * perturbation_strength
+    cos_coeffs_user = p_user[M_user:] * perturbation_strength
+    sin_double_deriv_user = -jnp.sin(2 * jnp.pi * n_user[:, None] * t[None, :] / T)
+    cos_double_deriv_user = -jnp.cos(2 * jnp.pi * n_user[:, None] * t[None, :] / T)
+    delta_f_double_prime_user = jnp.dot(
+        sin_coeffs_user * ((2 * jnp.pi * n_user / T) ** 2), sin_double_deriv_user
+    ) + jnp.dot(
+        cos_coeffs_user * ((2 * jnp.pi * n_user / T) ** 2), cos_double_deriv_user
+    )
+
+    # Total second derivative
+    delta_f_double_prime = delta_f_double_prime_opt + delta_f_double_prime_user
     return delta_f_double_prime
 
 # Third derivative f'''(t)
-def f_triple_prime(t, p, M, T, perturbation_strength, n):
-    sin_coeffs = p[:M] * perturbation_strength
-    cos_coeffs = p[M:] * perturbation_strength
-    sin_triple_deriv = -jnp.cos(2 * jnp.pi * n[:, None] * t[None, :] / T)
-    cos_triple_deriv = jnp.sin(2 * jnp.pi * n[:, None] * t[None, :] / T)
-    delta_f_triple_prime = jnp.dot(sin_coeffs * ((2 * jnp.pi * n / T) ** 3), sin_triple_deriv) + jnp.dot(cos_coeffs * ((2 * jnp.pi * n / T) ** 3), cos_triple_deriv)
+def f_triple_prime(t, p_opt, p_user, M_opt, M_user, T, perturbation_strength, n_opt, n_user):
+    # Optimizer-controlled perturbation third derivatives
+    sin_coeffs_opt = p_opt[:M_opt]
+    cos_coeffs_opt = p_opt[M_opt:]
+    sin_triple_deriv_opt = -jnp.cos(2 * jnp.pi * n_opt[:, None] * t[None, :] / T)
+    cos_triple_deriv_opt = jnp.sin(2 * jnp.pi * n_opt[:, None] * t[None, :] / T)
+    delta_f_triple_prime_opt = jnp.dot(
+        sin_coeffs_opt * ((2 * jnp.pi * n_opt / T) ** 3), sin_triple_deriv_opt
+    ) + jnp.dot(
+        cos_coeffs_opt * ((2 * jnp.pi * n_opt / T) ** 3), cos_triple_deriv_opt
+    )
+
+    # User-controlled perturbation third derivatives
+    sin_coeffs_user = p_user[:M_user] * perturbation_strength
+    cos_coeffs_user = p_user[M_user:] * perturbation_strength
+    sin_triple_deriv_user = -jnp.cos(2 * jnp.pi * n_user[:, None] * t[None, :] / T)
+    cos_triple_deriv_user = jnp.sin(2 * jnp.pi * n_user[:, None] * t[None, :] / T)
+    delta_f_triple_prime_user = jnp.dot(
+        sin_coeffs_user * ((2 * jnp.pi * n_user / T) ** 3), sin_triple_deriv_user
+    ) + jnp.dot(
+        cos_coeffs_user * ((2 * jnp.pi * n_user / T) ** 3), cos_triple_deriv_user
+    )
+
+    # Total third derivative
+    delta_f_triple_prime = delta_f_triple_prime_opt + delta_f_triple_prime_user
     return delta_f_triple_prime
 
 # Define the Schwarzian derivative
-def schwarzian_derivative(t, p, M, T, perturbation_strength, n):
-    fp = f_prime(t, p, M, T, perturbation_strength, n)
-    fpp = f_double_prime(t, p, M, T, perturbation_strength, n)
-    fppp = f_triple_prime(t, p, M, T, perturbation_strength, n)
+def schwarzian_derivative(t, p_opt, p_user, M_opt, M_user, T, perturbation_strength, n_opt, n_user):
+    fp = f_prime(t, p_opt, p_user, M_opt, M_user, T, perturbation_strength, n_opt, n_user)
+    fpp = f_double_prime(t, p_opt, p_user, M_opt, M_user, T, perturbation_strength, n_opt, n_user)
+    fppp = f_triple_prime(t, p_opt, p_user, M_opt, M_user, T, perturbation_strength, n_opt, n_user)
     S = fppp / fp - 1.5 * (fpp / fp) ** 2
     return S
 
@@ -65,14 +133,14 @@ def jax_trapz(y, x):
     return jnp.sum((y[:-1] + y[1:]) * dx / 2.0)
 
 # Define the Schwarzian action
-def schwarzian_action(p, t, C, M, T, perturbation_strength, n):
-    S = schwarzian_derivative(t, p, M, T, perturbation_strength, n)
+def schwarzian_action(p_opt, p_user, t, C, M_opt, M_user, T, perturbation_strength, n_opt, n_user):
+    S = schwarzian_derivative(t, p_opt, p_user, M_opt, M_user, T, perturbation_strength, n_opt, n_user)
     action = -C * jax_trapz(S, t)
     return action
 
-# Objective function to minimize
-def action_to_minimize(p, t, C, M, T, perturbation_strength, n):
-    return schwarzian_action(p, t, C, M, T, perturbation_strength, n)
+# Objective function to minimize (only p_opt is optimized)
+def action_to_minimize(p_opt, p_user, t, C, M_opt, M_user, T, perturbation_strength, n_opt, n_user):
+    return schwarzian_action(p_opt, p_user, t, C, M_opt, M_user, T, perturbation_strength, n_opt, n_user)
 
 def run_optimizations(action_to_minimize, p_initial, config):
     """
@@ -118,11 +186,10 @@ def run_optimizations(action_to_minimize, p_initial, config):
 
     return results
 
-
 def print_optimization_results(action_values, times_taken):
     """
     Print the final action values and computation time for each optimization method.
-    
+
     Parameters:
     - action_values (dict): Final action values from each optimizer.
     - times_taken (dict): Computation time taken for each optimizer.
@@ -132,52 +199,54 @@ def print_optimization_results(action_values, times_taken):
     for method_name, action_value in action_values.items():
         print(f"{method_name}: {action_value} | Time Taken: {times_taken[method_name]:.4f} seconds")
 
-def plot_f_vs_ft(optimized_params, t, f, p_initial, M, T, perturbation_strength, n):
+def plot_f_vs_ft(optimized_params, p_user, t, f, p_initial, M_opt, M_user, T, perturbation_strength, n_opt, n_user):
     """
     Plot the optimized function f(t) for each optimization method.
-    
+
     Parameters:
     - optimized_params (dict): Optimized parameters for each method.
+    - p_user (array): User-controlled perturbation parameters.
     - t (array): Time grid.
-    - f (function): Function to calculate f(t, p).
-    - p_initial (array): Initial parameter array to check shape.
-    - M, T, perturbation_strength, n: Additional parameters for f.
+    - f (function): Function to calculate f(t, p_opt, p_user).
+    - p_initial (array): Initial optimizer parameter array.
+    - M_opt, M_user, T, perturbation_strength, n_opt, n_user: Additional parameters for f.
     """
 
     expected_shape = p_initial.shape
     plt.figure(figsize=(12, 8))
-    
+
     for method, p_optimal in optimized_params.items():
         if isinstance(p_optimal, jnp.ndarray) and p_optimal.shape == expected_shape:
-            f_optimal = f(t, p_optimal, M, T, perturbation_strength, n)
+            f_optimal = f(t, p_optimal, p_user, M_opt, M_user, T, perturbation_strength, n_opt, n_user)
             plt.plot(t, f_optimal, label=f"Optimized f(t) using {method}")
         else:
             print(f"Skipping {method} due to incompatible result shape or type.")
 
     plt.xlabel("t")
     plt.ylabel("f(t)")
-    plt.title("Optimized Reparametrisation of f(t) for Each Method")
+    plt.title("Optimized Reparameterization of f(t) for Each Method")
     plt.legend()
     plt.show()
 
-def plot_deviation_from_f(optimized_params, t, f, p_initial, M, T, perturbation_strength, n):
+def plot_deviation_from_f(optimized_params, p_user, t, f, p_initial, M_opt, M_user, T, perturbation_strength, n_opt, n_user):
     """
     Plot the deviation of f(t) from linearity for each optimization method.
-    
+
     Parameters:
     - optimized_params (dict): Optimized parameters for each method.
+    - p_user (array): User-controlled perturbation parameters.
     - t (array): Time grid.
-    - f (function): Function to calculate f(t, p).
-    - p_initial (array): Initial parameter array to check shape.
-    - M, T, perturbation_strength, n: Additional parameters for f.
+    - f (function): Function to calculate f(t, p_opt, p_user).
+    - p_initial (array): Initial optimizer parameter array.
+    - M_opt, M_user, T, perturbation_strength, n_opt, n_user: Additional parameters for f.
     """
 
     expected_shape = p_initial.shape
     plt.figure(figsize=(12, 8))
-    
+
     for method, p_optimal in optimized_params.items():
         if isinstance(p_optimal, jnp.ndarray) and p_optimal.shape == expected_shape:
-            f_optimal = f(t, p_optimal, M, T, perturbation_strength, n)
+            f_optimal = f(t, p_optimal, p_user, M_opt, M_user, T, perturbation_strength, n_opt, n_user)
             f_t_minus_t = f_optimal - t
             plt.plot(t, f_t_minus_t, label=f"Deviation (f(t) - t) using {method}")
         else:
