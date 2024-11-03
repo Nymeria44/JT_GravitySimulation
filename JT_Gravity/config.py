@@ -34,7 +34,7 @@ class PerturbationConfig:
 
         # Generate p_user as random perturbation parameters (hidden from direct access)
         key = jax.random.PRNGKey(1)  # fixed seed for reproducibility
-        self._p_user = jax.random.normal(key, shape=(2 * M_user,)) * 0.01
+        self._p_user = jax.random.normal(key, shape=(2 * M_user,)) * 0.01 * self.perturbation_strength
 
     @property
     def t(self):

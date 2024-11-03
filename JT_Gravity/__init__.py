@@ -36,7 +36,7 @@ def main():
         T=1000.0,
         N=100000,
         C=1.0,
-        perturbation_strength=60.0,
+        perturbation_strength=100000,
         M_user=10,
         M_opt=15
     )
