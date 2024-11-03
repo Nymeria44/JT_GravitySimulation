@@ -15,132 +15,111 @@ from optimisations import (
     run_adabelief_optimization,
 )
 
-# Define f(t, p_opt, p_user) with both optimizer-controlled and user-controlled perturbations
-def f(t, p_opt, p_user, M_opt, M_user, T, perturbation_strength, n_opt, n_user):
-    # Optimizer-controlled perturbation
-    sin_coeffs_opt = p_opt[:M_opt] 
-    cos_coeffs_opt = p_opt[M_opt:]
-    sin_terms_opt = jnp.sin(2 * jnp.pi * n_opt[:, None] * t[None, :] / T)
-    cos_terms_opt = jnp.cos(2 * jnp.pi * n_opt[:, None] * t[None, :] / T)
-    delta_f_opt = jnp.dot(sin_coeffs_opt, sin_terms_opt) + jnp.dot(cos_coeffs_opt, cos_terms_opt)
+from config import PerturbationConfig  # Import the configuration class
+
+def calculate_delta_f(t, p, M, T, n, order=0):
+    """
+    Calculate the Fourier series terms and its derivatives up to a specified order.
+
+    Parameters:
+    - t: time variable
+    - p: Fourier coefficients (sin and cos combined)
+    - M: Number of terms in each series (sin and cos)
+    - T: Period
+    - n: Array of harmonic indices
+    - order: The derivative order (0 for the function itself, 1 for first derivative, etc.)
+
+    Returns:
+    - delta_f: Fourier series perturbation or its derivative
+    """
+    # Separate sine and cosine coefficients
+    sin_coeffs = p[:M]
+    cos_coeffs = p[M:]
+    
+    # Calculate frequency factor based on derivative order
+    factor = (2 * jnp.pi * n / T) ** order
+    
+    # Calculate sine and cosine terms, adjusting for derivative order
+    if order % 4 == 0:  # No change in sin/cos phase
+        sin_terms = jnp.sin(2 * jnp.pi * n[:, None] * t[None, :] / T)
+        cos_terms = jnp.cos(2 * jnp.pi * n[:, None] * t[None, :] / T)
+    elif order % 4 == 1:  # First derivative
+        sin_terms = jnp.cos(2 * jnp.pi * n[:, None] * t[None, :] / T)
+        cos_terms = -jnp.sin(2 * jnp.pi * n[:, None] * t[None, :] / T)
+    elif order % 4 == 2:  # Second derivative
+        sin_terms = -jnp.sin(2 * jnp.pi * n[:, None] * t[None, :] / T)
+        cos_terms = -jnp.cos(2 * jnp.pi * n[:, None] * t[None, :] / T)
+    else:  # Third derivative
+        sin_terms = -jnp.cos(2 * jnp.pi * n[:, None] * t[None, :] / T)
+        cos_terms = jnp.sin(2 * jnp.pi * n[:, None] * t[None, :] / T)
+
+    # Apply factor for each order to coefficients and calculate delta_f
+    delta_f = jnp.dot(sin_coeffs * factor, sin_terms) + jnp.dot(cos_coeffs * factor, cos_terms)
+    return delta_f
+
+# Define f(t) with optimizer and user perturbations
+def f(t, p_opt, M_opt, config: PerturbationConfig):
+    # Use precomputed harmonic indices for user perturbation
+    n_user = config.n_user
+    n_opt = jnp.arange(config.M_user + 1, config.M_user + M_opt + 1)
 
     # User-controlled perturbation
-    sin_coeffs_user = p_user[:M_user] * perturbation_strength
-    cos_coeffs_user = p_user[M_user:] * perturbation_strength
-    sin_terms_user = jnp.sin(2 * jnp.pi * n_user[:, None] * t[None, :] / T)
-    cos_terms_user = jnp.cos(2 * jnp.pi * n_user[:, None] * t[None, :] / T)
-    delta_f_user = jnp.dot(sin_coeffs_user, sin_terms_user) + jnp.dot(cos_coeffs_user, cos_terms_user)
+    delta_f_user = calculate_delta_f(t, config.p_user, config.M_user, config.T, n_user)
+    
+    # Optimizer-controlled perturbation
+    delta_f_opt = calculate_delta_f(t, p_opt, M_opt, config.T, n_opt)
 
     # Total perturbation
-    delta_f = delta_f_opt + delta_f_user
-    return t + delta_f
+    return t + delta_f_user + delta_f_opt
 
 # First derivative f'(t)
-def f_prime(t, p_opt, p_user, M_opt, M_user, T, perturbation_strength, n_opt, n_user):
-    # Optimizer-controlled perturbation derivatives
-    sin_coeffs_opt = p_opt[:M_opt]
-    cos_coeffs_opt = p_opt[M_opt:]
-    sin_deriv_opt = jnp.cos(2 * jnp.pi * n_opt[:, None] * t[None, :] / T)
-    cos_deriv_opt = -jnp.sin(2 * jnp.pi * n_opt[:, None] * t[None, :] / T)
-    delta_f_prime_opt = jnp.dot(
-        sin_coeffs_opt * (2 * jnp.pi * n_opt / T), sin_deriv_opt
-    ) + jnp.dot(
-        cos_coeffs_opt * (2 * jnp.pi * n_opt / T), cos_deriv_opt
-    )
+def f_prime(t, p_opt, M_opt, config: PerturbationConfig):
+    n_user = config.n_user
+    n_opt = jnp.arange(config.M_user + 1, config.M_user + M_opt + 1)
 
-    # User-controlled perturbation derivatives
-    sin_coeffs_user = p_user[:M_user] * perturbation_strength
-    cos_coeffs_user = p_user[M_user:] * perturbation_strength
-    sin_deriv_user = jnp.cos(2 * jnp.pi * n_user[:, None] * t[None, :] / T)
-    cos_deriv_user = -jnp.sin(2 * jnp.pi * n_user[:, None] * t[None, :] / T)
-    delta_f_prime_user = jnp.dot(
-        sin_coeffs_user * (2 * jnp.pi * n_user / T), sin_deriv_user
-    ) + jnp.dot(
-        cos_coeffs_user * (2 * jnp.pi * n_user / T), cos_deriv_user
-    )
+    delta_f_prime_user = calculate_delta_f(t, config.p_user, config.M_user, config.T, n_user, order=1)
+    delta_f_prime_opt = calculate_delta_f(t, p_opt, M_opt, config.T, n_opt, order=1)
 
-    # Total derivative
-    delta_f_prime = delta_f_prime_opt + delta_f_prime_user
-    return 1 + delta_f_prime
+    return 1 + delta_f_prime_user + delta_f_prime_opt
 
 # Second derivative f''(t)
-def f_double_prime(t, p_opt, p_user, M_opt, M_user, T, perturbation_strength, n_opt, n_user):
-    # Optimizer-controlled perturbation second derivatives
-    sin_coeffs_opt = p_opt[:M_opt]
-    cos_coeffs_opt = p_opt[M_opt:]
-    sin_double_deriv_opt = -jnp.sin(2 * jnp.pi * n_opt[:, None] * t[None, :] / T)
-    cos_double_deriv_opt = -jnp.cos(2 * jnp.pi * n_opt[:, None] * t[None, :] / T)
-    delta_f_double_prime_opt = jnp.dot(
-        sin_coeffs_opt * ((2 * jnp.pi * n_opt / T) ** 2), sin_double_deriv_opt
-    ) + jnp.dot(
-        cos_coeffs_opt * ((2 * jnp.pi * n_opt / T) ** 2), cos_double_deriv_opt
-    )
+def f_double_prime(t, p_opt, M_opt, config: PerturbationConfig):
+    n_user = config.n_user
+    n_opt = jnp.arange(config.M_user + 1, config.M_user + M_opt + 1)
 
-    # User-controlled perturbation second derivatives
-    sin_coeffs_user = p_user[:M_user] * perturbation_strength
-    cos_coeffs_user = p_user[M_user:] * perturbation_strength
-    sin_double_deriv_user = -jnp.sin(2 * jnp.pi * n_user[:, None] * t[None, :] / T)
-    cos_double_deriv_user = -jnp.cos(2 * jnp.pi * n_user[:, None] * t[None, :] / T)
-    delta_f_double_prime_user = jnp.dot(
-        sin_coeffs_user * ((2 * jnp.pi * n_user / T) ** 2), sin_double_deriv_user
-    ) + jnp.dot(
-        cos_coeffs_user * ((2 * jnp.pi * n_user / T) ** 2), cos_double_deriv_user
-    )
+    delta_f_double_prime_user = calculate_delta_f(t, config.p_user, config.M_user, config.T, n_user, order=2)
+    delta_f_double_prime_opt = calculate_delta_f(t, p_opt, M_opt, config.T, n_opt, order=2)
 
-    # Total second derivative
-    delta_f_double_prime = delta_f_double_prime_opt + delta_f_double_prime_user
-    return delta_f_double_prime
+    return delta_f_double_prime_user + delta_f_double_prime_opt
 
 # Third derivative f'''(t)
-def f_triple_prime(t, p_opt, p_user, M_opt, M_user, T, perturbation_strength, n_opt, n_user):
-    # Optimizer-controlled perturbation third derivatives
-    sin_coeffs_opt = p_opt[:M_opt]
-    cos_coeffs_opt = p_opt[M_opt:]
-    sin_triple_deriv_opt = -jnp.cos(2 * jnp.pi * n_opt[:, None] * t[None, :] / T)
-    cos_triple_deriv_opt = jnp.sin(2 * jnp.pi * n_opt[:, None] * t[None, :] / T)
-    delta_f_triple_prime_opt = jnp.dot(
-        sin_coeffs_opt * ((2 * jnp.pi * n_opt / T) ** 3), sin_triple_deriv_opt
-    ) + jnp.dot(
-        cos_coeffs_opt * ((2 * jnp.pi * n_opt / T) ** 3), cos_triple_deriv_opt
-    )
+def f_triple_prime(t, p_opt, M_opt, config: PerturbationConfig):
+    n_user = config.n_user
+    n_opt = jnp.arange(config.M_user + 1, config.M_user + M_opt + 1)
 
-    # User-controlled perturbation third derivatives
-    sin_coeffs_user = p_user[:M_user] * perturbation_strength
-    cos_coeffs_user = p_user[M_user:] * perturbation_strength
-    sin_triple_deriv_user = -jnp.cos(2 * jnp.pi * n_user[:, None] * t[None, :] / T)
-    cos_triple_deriv_user = jnp.sin(2 * jnp.pi * n_user[:, None] * t[None, :] / T)
-    delta_f_triple_prime_user = jnp.dot(
-        sin_coeffs_user * ((2 * jnp.pi * n_user / T) ** 3), sin_triple_deriv_user
-    ) + jnp.dot(
-        cos_coeffs_user * ((2 * jnp.pi * n_user / T) ** 3), cos_triple_deriv_user
-    )
+    delta_f_triple_prime_user = calculate_delta_f(t, config.p_user, config.M_user, config.T, n_user, order=3)
+    delta_f_triple_prime_opt = calculate_delta_f(t, p_opt, M_opt, config.T, n_opt, order=3)
 
-    # Total third derivative
-    delta_f_triple_prime = delta_f_triple_prime_opt + delta_f_triple_prime_user
-    return delta_f_triple_prime
+    return delta_f_triple_prime_user + delta_f_triple_prime_opt
 
 # Define the Schwarzian derivative
-def schwarzian_derivative(t, p_opt, p_user, M_opt, M_user, T, perturbation_strength, n_opt, n_user):
-    fp = f_prime(t, p_opt, p_user, M_opt, M_user, T, perturbation_strength, n_opt, n_user)
-    fpp = f_double_prime(t, p_opt, p_user, M_opt, M_user, T, perturbation_strength, n_opt, n_user)
-    fppp = f_triple_prime(t, p_opt, p_user, M_opt, M_user, T, perturbation_strength, n_opt, n_user)
+def schwarzian_derivative(t, p_opt, M_opt, config: PerturbationConfig):
+    fp = f_prime(t, p_opt, M_opt, config)
+    fpp = f_double_prime(t, p_opt, M_opt, config)
+    fppp = f_triple_prime(t, p_opt, M_opt, config)
     S = fppp / fp - 1.5 * (fpp / fp) ** 2
     return S
 
-# Trapezoidal integration
-def jax_trapz(y, x):
-    dx = jnp.diff(x)
-    return jnp.sum((y[:-1] + y[1:]) * dx / 2.0)
-
 # Define the Schwarzian action
-def schwarzian_action(p_opt, p_user, t, C, M_opt, M_user, T, perturbation_strength, n_opt, n_user):
-    S = schwarzian_derivative(t, p_opt, p_user, M_opt, M_user, T, perturbation_strength, n_opt, n_user)
-    action = -C * jax_trapz(S, t)
+def schwarzian_action(p_opt, t, M_opt, config: PerturbationConfig):
+    S = schwarzian_derivative(t, p_opt, M_opt, config)
+    action = -config.C * jax_trapezoid(S, t)
     return action
 
 # Objective function to minimize (only p_opt is optimized)
-def action_to_minimize(p_opt, p_user, t, C, M_opt, M_user, T, perturbation_strength, n_opt, n_user):
-    return schwarzian_action(p_opt, p_user, t, C, M_opt, M_user, T, perturbation_strength, n_opt, n_user)
+def action_to_minimize(p_opt, t, M_opt, config: PerturbationConfig):
+    return schwarzian_action(p_opt, t, M_opt, config)
+
 
 def run_optimizations(action_to_minimize, p_initial, config):
     """

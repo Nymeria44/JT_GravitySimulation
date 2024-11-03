@@ -13,6 +13,8 @@ from schwarzianJAX import (
     plot_deviation_from_f
 )
 
+from config import PerturbationConfig
+
 # Environment setup
 os.environ['XLA_FLAGS'] = '--xla_gpu_triton_gemm_any=True'
 matplotlib.use('TkAgg')
@@ -30,11 +32,21 @@ OPTIMIZER_CONFIG = {
 }
 
 def main():
-    # Set up constants and initial parameters
-    T = 100000.0
-    N = 100000
-    C = 1.0
-    perturbation_strength = 60.0
+    # Initialize user perturbation configuration
+    user_config = PerturbationConfig(
+        T=100000.0,
+        N=100000,
+        C=1.0,
+        perturbation_strength=60.0,
+        M_user=5
+    )
+
+    # Define optimizer-related settings separately
+    M_opt = 15
+    n_opt = jnp.arange(user_config.M_user + 1, user_config.M_user + M_opt + 1)
+    
+    # Access user_config parameters as needed
+    t = jnp.linspace(0.001, user_config.T, user_config.N)
 
     # User-controlled perturbation parameters (Fixed)
     M_user = 5
@@ -50,9 +62,6 @@ def main():
 
     t = jnp.linspace(0.001, T, N)
 
-    # Set optimizer configuration
-    config = OPTIMIZER_CONFIG
-
     # Define the objective function to minimize, with p_user as a constant parameter
     def objective_function(p_opt):
         return action_to_minimize(
@@ -63,7 +72,7 @@ def main():
     results = run_optimizations(
         action_to_minimize=objective_function,
         p_initial=p_initial,
-        config=config
+        config=OPTIMIZER_CONFIG
     )
 
     # Print results and plot
