@@ -4,7 +4,7 @@ import jax.numpy as jnp
 import jax
 
 class PerturbationConfig:
-    def __init__(self, T, N, C, perturbation_strength, M_user, M_opt):
+    def __init__(self, T, N, C, perturbation_strength, M_user, M_opt, pulse_time, pulse_amp, pulse_width):
         """
         Initialize the configuration with user-defined perturbation parameters and optimizer settings.
         Precompute the harmonic indices (n_user, n_opt) and generate p_user based on M_user.
@@ -17,6 +17,8 @@ class PerturbationConfig:
         - M_user: Number of user-defined harmonics
         - M_opt: Number of optimizer-controlled harmonics
         """
+
+# def calculate_delta_f(t, p, M, T, n, order=0, pulse_time=None, pulse_amplitude=0, pulse_width=0.01):
         # Primary parameters
         self.T = T
         self.N = N
@@ -24,6 +26,9 @@ class PerturbationConfig:
         self.perturbation_strength = perturbation_strength
         self.M_user = M_user
         self.M_opt = M_opt
+        self.pulse_time = pulse_time
+        self.pulse_amp = pulse_amp
+        self.pulse_width = pulse_width
 
         # Time array
         self._t = jnp.linspace(0.001, T, N)

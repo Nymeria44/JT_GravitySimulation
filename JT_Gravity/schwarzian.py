@@ -17,9 +17,11 @@ from optimisations import (
 
 from config import PerturbationConfig  # Import the configuration class
 
-def calculate_delta_f(t, p, M, T, n, order=0):
+
+def calculate_delta_f(t, p, M, T, n, order=0, pulse_time=None, pulse_amp=0, pulse_width=0.01):
     """
-    Calculate the Fourier series terms and its derivatives up to a specified order.
+    Calculate the Fourier series terms and its derivatives up to a specified order,
+    and optionally add a Gaussian pulse (and its derivatives) to simulate a Dirac delta function approximation.
 
     Parameters:
     - t: time variable
@@ -28,33 +30,65 @@ def calculate_delta_f(t, p, M, T, n, order=0):
     - T: Period
     - n: Array of harmonic indices
     - order: The derivative order (0 for the function itself, 1 for first derivative, etc.)
+    - pulse_time: Center time for the Gaussian pulse (optional)
+    - pulse_amplitude: Amplitude of the Gaussian pulse (optional)
+    - pulse_width: Width of the Gaussian pulse (optional, small for delta-like effect)
 
     Returns:
-    - delta_f: Fourier series perturbation or its derivative
+    - delta_f: Fourier series perturbation or its derivative with optional Gaussian pulse
     """
-    # Separate sine and cosine coefficients
-    sin_coeffs = p[:M]
-    cos_coeffs = p[M:]
-    
-    # Calculate frequency factor based on derivative order
-    factor = (2 * jnp.pi * n / T) ** order
-    
-    # Calculate sine and cosine terms, adjusting for derivative order
-    if order % 4 == 0:  # No change in sin/cos phase
-        sin_terms = jnp.sin(2 * jnp.pi * n[:, None] * t[None, :] / T)
-        cos_terms = jnp.cos(2 * jnp.pi * n[:, None] * t[None, :] / T)
-    elif order % 4 == 1:  # First derivative
-        sin_terms = jnp.cos(2 * jnp.pi * n[:, None] * t[None, :] / T)
-        cos_terms = -jnp.sin(2 * jnp.pi * n[:, None] * t[None, :] / T)
-    elif order % 4 == 2:  # Second derivative
-        sin_terms = -jnp.sin(2 * jnp.pi * n[:, None] * t[None, :] / T)
-        cos_terms = -jnp.cos(2 * jnp.pi * n[:, None] * t[None, :] / T)
-    else:  # Third derivative
-        sin_terms = -jnp.cos(2 * jnp.pi * n[:, None] * t[None, :] / T)
-        cos_terms = jnp.sin(2 * jnp.pi * n[:, None] * t[None, :] / T)
+    delta_f = 0  # Initialised to zero
 
-    # Apply factor for each order to coefficients and calculate delta_f
-    delta_f = jnp.dot(sin_coeffs * factor, sin_terms) + jnp.dot(cos_coeffs * factor, cos_terms)
+    if p is not None:
+        # Separate sine and cosine coefficients
+        sin_coeffs = p[:M]
+        cos_coeffs = p[M:]
+        
+        # Calculate frequency factor based on derivative order
+        factor = (2 * jnp.pi * n / T) ** order
+        
+        # Calculate sine and cosine terms, adjusting for derivative order
+        if order % 4 == 0:  # No change in sin/cos phase
+            sin_terms = jnp.sin(2 * jnp.pi * n[:, None] * t[None, :] / T)
+            cos_terms = jnp.cos(2 * jnp.pi * n[:, None] * t[None, :] / T)
+        elif order % 4 == 1:  # First derivative
+            sin_terms = jnp.cos(2 * jnp.pi * n[:, None] * t[None, :] / T)
+            cos_terms = -jnp.sin(2 * jnp.pi * n[:, None] * t[None, :] / T)
+        elif order % 4 == 2:  # Second derivative
+            sin_terms = -jnp.sin(2 * jnp.pi * n[:, None] * t[None, :] / T)
+            cos_terms = -jnp.cos(2 * jnp.pi * n[:, None] * t[None, :] / T)
+        else:  # Third derivative
+            sin_terms = -jnp.cos(2 * jnp.pi * n[:, None] * t[None, :] / T)
+            cos_terms = jnp.sin(2 * jnp.pi * n[:, None] * t[None, :] / T)
+
+        # Apply factor for each order to coefficients and calculate delta_f
+        delta_f = jnp.dot(sin_coeffs * factor, sin_terms) + jnp.dot(cos_coeffs * factor, cos_terms)
+    
+    # Optionally add a Gaussian pulse and its derivatives if pulse_time is specified
+    if pulse_time is not None:
+        # Gaussian pulse and its derivatives
+        t_diff = t - pulse_time
+        gaussian_base = pulse_amp * (1 / jnp.sqrt(2 * jnp.pi * pulse_width**2))
+        
+        if order == 0:
+            # 0th derivative: Gaussian pulse itself
+            gaussian_pulse = gaussian_base * jnp.exp(-t_diff**2 / (2 * pulse_width**2))
+        elif order == 1:
+            # 1st derivative
+            gaussian_pulse = gaussian_base * (-t_diff / pulse_width**2) * jnp.exp(-t_diff**2 / (2 * pulse_width**2))
+        elif order == 2:
+            # 2nd derivative
+            gaussian_pulse = gaussian_base * ((t_diff**2 - pulse_width**2) / pulse_width**4) * jnp.exp(-t_diff**2 / (2 * pulse_width**2))
+        elif order == 3:
+            # 3rd derivative
+            gaussian_pulse = gaussian_base * (-t_diff * (t_diff**2 - 3 * pulse_width**2) / pulse_width**6) * jnp.exp(-t_diff**2 / (2 * pulse_width**2))
+        else:
+            # Higher derivatives are not implemented here
+            raise ValueError("Higher derivatives are not implemented for the Gaussian pulse")
+
+        # Add the Gaussian pulse or its derivative to delta_f
+        delta_f += gaussian_pulse
+    
     return delta_f
 
 def calculate_f(p_opt, config: PerturbationConfig, order=0):
@@ -71,11 +105,23 @@ def calculate_f(p_opt, config: PerturbationConfig, order=0):
     """
     t = config.t
 
+
     # User perturbation derivative of the specified order
-    delta_f_user = calculate_delta_f(t, config.p_user, config.M_user, config.T, config.n_user, order=order)
-    
+    delta_f_user = calculate_delta_f(
+        t, config.p_user, config.M_user,
+        config.T, config.n_user,
+        order=order,
+        pulse_time=config.pulse_time,
+        pulse_amp=config.pulse_amp,
+        pulse_width=config.pulse_width
+    )
+
     # Optimizer perturbation derivative of the specified order
-    delta_f_opt = calculate_delta_f(t, p_opt, config.M_opt, config.T, config.n_opt, order=order)
+    delta_f_opt = calculate_delta_f(
+        t, p_opt, config.M_opt,
+        config.T, config.n_opt,
+        order=order
+    )
 
     # Combine user and optimizer perturbations with baseline
     if order == 0:

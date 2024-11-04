@@ -20,8 +20,8 @@ matplotlib.use('TkAgg')
 # Configuration dictionary to enable/disable specific optimizers
 OPTIMIZER_CONFIG = {
     "BFGS": False,
-    "Adam (JAX)": True,
-    "Adam (Optax)": True,
+    "Adam (JAX)": False,
+    "Adam (Optax)": False,
     "Yogi": True,
     "LBFGS": False,
     "AdaBelief": True,
@@ -32,12 +32,15 @@ OPTIMIZER_CONFIG = {
 def main():
     # Initialize perturbation configuration, including user and optimizer parameters
     PertConfig = PerturbationConfig(
-        T=1000.0,
-        N=1000000,
-        C=1.0,
-        perturbation_strength=10000,
-        M_user=10,
-        M_opt=15
+        T=10.0,                   # Total sim time
+        N=10000,                  # Number of time samples
+        C=1.0,                    # Scaling factor of action
+        perturbation_strength=30, # Magnitude of the user-defined perturbation
+        M_user=0,                 # Number of Fourier modes for user-defined perturbation
+        M_opt=100,                # Number of Fourier modes controlled by optimiser
+        pulse_time=5,             # Center of Gaussian pulse
+        pulse_amp=1000,              # Amplitude of Gaussian pulse
+        pulse_width=0             # Width of Gaussian pulse
     )
 
     # Initial guess for optimizer-controlled parameters
