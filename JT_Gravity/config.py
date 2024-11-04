@@ -16,9 +16,11 @@ class PerturbationConfig:
         - perturbation_strength: Strength of the perturbation
         - M_user: Number of user-defined harmonics
         - M_opt: Number of optimizer-controlled harmonics
+        - pulse_time: Center time for the Gaussian pulse
+        - pulse_amp: Amplitude of the Gaussian pulse
+        - pulse_width: Width of the Gaussian pulse
         """
-
-# def calculate_delta_f(t, p, M, T, n, order=0, pulse_time=None, pulse_amplitude=0, pulse_width=0.01):
+        
         # Primary parameters
         self.T = T
         self.N = N
@@ -30,6 +32,9 @@ class PerturbationConfig:
         self.pulse_amp = pulse_amp
         self.pulse_width = pulse_width
 
+        # Check if the pulse width is large enough to be detected given the sampling interval
+        self.validate_pulse_width()
+
         # Time array
         self._t = jnp.linspace(0.001, T, N)
 
@@ -40,6 +45,21 @@ class PerturbationConfig:
         # Generate p_user as random perturbation parameters (hidden from direct access)
         key = jax.random.PRNGKey(1)  # fixed seed for reproducibility
         self._p_user = jax.random.normal(key, shape=(2 * M_user,)) * 0.01 * self.perturbation_strength
+
+    def validate_pulse_width(self):
+        """Check if pulse width is sufficiently larger than the sampling interval."""
+        # Calculate the sampling interval
+        sampling_interval = self.T / self.N
+
+        # Minimum acceptable pulse width (e.g., 10 times the sampling interval)
+        min_pulse_width = 10 * sampling_interval
+
+        # Raise a warning if pulse width is too narrow
+        if self.pulse_amp > 0 and self.pulse_width < min_pulse_width:
+            raise ValueError(
+                f"Pulse width ({self.pulse_width}) is too narrow for the given sampling interval ({sampling_interval}). "
+                f"Consider setting pulse_width to at least {min_pulse_width:.5f} to ensure the pulse is captured."
+            )
 
     @property
     def t(self):

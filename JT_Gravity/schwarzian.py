@@ -18,7 +18,7 @@ from optimisations import (
 from config import PerturbationConfig  # Import the configuration class
 
 
-def calculate_delta_f(t, p, M, T, n, order=0, pulse_time=None, pulse_amp=0, pulse_width=0.01):
+def calculate_delta_f(t, p, M, T, n, order=0, pulse_time=None, pulse_amp=0, pulse_width=0.00):
     """
     Calculate the Fourier series terms and its derivatives up to a specified order,
     and optionally add a Gaussian pulse (and its derivatives) to simulate a Dirac delta function approximation.
@@ -39,7 +39,7 @@ def calculate_delta_f(t, p, M, T, n, order=0, pulse_time=None, pulse_amp=0, puls
     """
     delta_f = 0  # Initialised to zero
 
-    if p is not None:
+    if p != 0:
         # Separate sine and cosine coefficients
         sin_coeffs = p[:M]
         cos_coeffs = p[M:]
@@ -105,7 +105,6 @@ def calculate_f(p_opt, config: PerturbationConfig, order=0):
     """
     t = config.t
 
-
     # User perturbation derivative of the specified order
     delta_f_user = calculate_delta_f(
         t, config.p_user, config.M_user,
@@ -127,8 +126,8 @@ def calculate_f(p_opt, config: PerturbationConfig, order=0):
     if order == 0:
         return t + delta_f_user + delta_f_opt
     else:
-        return delta_f_user + delta_f_opt + (1 if order == 1 else 0)
-
+        # Add 1 for the baseline derivative of f(t) = t when order == 1
+        return (1 if order == 1 else 0) + delta_f_user + delta_f_opt
 
 # Define the Schwarzian derivative
 def schwarzian_derivative(p_opt, config: PerturbationConfig):

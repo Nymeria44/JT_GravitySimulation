@@ -32,16 +32,22 @@ OPTIMIZER_CONFIG = {
 def main():
     # Initialize perturbation configuration, including user and optimizer parameters
     PertConfig = PerturbationConfig(
+        # Core parameters
         T=10.0,                   # Total sim time
         N=10000,                  # Number of time samples
         C=1.0,                    # Scaling factor of action
-        perturbation_strength=30, # Magnitude of the user-defined perturbation
+
+        # Fourier perturbation settings
+        perturbation_strength=30, # Magnitude of user Fourier Pertubation
         M_user=0,                 # Number of Fourier modes for user-defined perturbation
         M_opt=100,                # Number of Fourier modes controlled by optimiser
+
+        # Gaussian pulse settings
         pulse_time=5,             # Center of Gaussian pulse
         pulse_amp=1000,              # Amplitude of Gaussian pulse
-        pulse_width=0             # Width of Gaussian pulse
+        pulse_width=0.1             # Width of Gaussian pulse
     )
+    PertConfig.validate_pulse_width() # Checking pulse width isn't too small to be detected
 
     # Initial guess for optimizer-controlled parameters
     key_opt = jax.random.PRNGKey(0)
