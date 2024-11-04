@@ -1,5 +1,6 @@
 # schwarzianJAX.py
 
+import jax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 
@@ -39,7 +40,7 @@ def calculate_delta_f(t, p, M, T, n, order=0, pulse_time=None, pulse_amp=0, puls
     """
     delta_f = 0  # Initialised to zero
 
-    if p != 0:
+    if p is not None and p.size > 0:
         # Separate sine and cosine coefficients
         sin_coeffs = p[:M]
         cos_coeffs = p[M:]
@@ -65,7 +66,7 @@ def calculate_delta_f(t, p, M, T, n, order=0, pulse_time=None, pulse_amp=0, puls
         delta_f = jnp.dot(sin_coeffs * factor, sin_terms) + jnp.dot(cos_coeffs * factor, cos_terms)
     
     # Optionally add a Gaussian pulse and its derivatives if pulse_time is specified
-    if pulse_time is not None:
+    if pulse_time is not None and pulse_amp != 0 and pulse_width != 0:
         # Gaussian pulse and its derivatives
         t_diff = t - pulse_time
         gaussian_base = pulse_amp * (1 / jnp.sqrt(2 * jnp.pi * pulse_width**2))
@@ -137,15 +138,10 @@ def schwarzian_derivative(p_opt, config: PerturbationConfig):
     S = fppp / fp - 1.5 * (fpp / fp) ** 2
     return S
 
-# Trapezoidal integration
-def jax_trapz(y, x):
-    dx = jnp.diff(x)
-    return jnp.sum((y[:-1] + y[1:]) * dx / 2.0)
-
 # Define the Schwarzian action
 def schwarzian_action(p_opt, config: PerturbationConfig):
     S = schwarzian_derivative(p_opt, config)
-    action = -config.C * jax_trapz(S, config.t)
+    action = -config.C * jax.scipy.integrate.trapezoid(S, config.t)
     return action
 
 # Objective function to minimize (only p_opt is optimized)
