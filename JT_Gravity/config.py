@@ -4,7 +4,7 @@ import jax.numpy as jnp
 import jax
 
 class PerturbationConfig:
-    def __init__(self, T, N, C, perturbation_strength, M_user, M_opt, pulse_time, pulse_amp, pulse_width):
+    def __init__(self, T, N, G, a, perturbation_strength, M_user, M_opt, pulse_time, pulse_amp, pulse_width):
         """
         Initialize the configuration with user-defined perturbation parameters and optimizer settings.
         Precompute the harmonic indices (n_user, n_opt) and generate p_user based on M_user.
@@ -24,7 +24,8 @@ class PerturbationConfig:
         # Primary parameters
         self.T = T
         self.N = N
-        self.C = C
+        self.G = G
+        self.a = a
         self.perturbation_strength = perturbation_strength
         self.M_user = M_user
         self.M_opt = M_opt
@@ -32,8 +33,14 @@ class PerturbationConfig:
         self.pulse_amp = pulse_amp
         self.pulse_width = pulse_width
 
+        # Calculated constants
+        self.kappa = (8 * jnp.pi * self.G) / self.a
+        self.C = self.a / (16 * jnp.pi * self.G)
+
         # Check if the pulse width is large enough to be detected given the sampling interval
         self.validate_pulse_width()
+
+        # TODO add validation that a is positive
 
         # Time array
         self._t = jnp.linspace(0.001, T, N)

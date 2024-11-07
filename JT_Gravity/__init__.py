@@ -35,7 +35,8 @@ def main():
         # Core parameters
         T=10.0,                   # Total sim time
         N=1000000,                  # Number of time samples
-        C=1.0,                    # Scaling factor of action
+        G = 1,  # Gravitational constant in 2D
+        a = 1,  # back reaction stability parameter (postive constant)
 
         # Fourier perturbation settings
         perturbation_strength=40, # Magnitude of user Fourier Pertubation
