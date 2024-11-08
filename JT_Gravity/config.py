@@ -4,18 +4,18 @@ import jax.numpy as jnp
 import jax
 
 class PerturbationConfig:
-    def __init__(self, T, N, G, a, perturbation_strength, M_user, M_opt, pulse_time, pulse_amp, pulse_width):
+    def __init__(self, T, N, G, a, perturbation_strength, M, pulse_time, pulse_amp, pulse_width):
         """
         Initialize the configuration with user-defined perturbation parameters and optimizer settings.
-        Precompute the harmonic indices (n_user, n_opt) and generate p_user based on M_user.
+        Precompute the harmonic indices (n_user, n_opt) and generate p_user based on half of M for each.
 
         Parameters:
         - T: Period of the perturbation
         - N: Number of time samples
-        - C: Constant for action calculation
+        - G: Constant for gravitational calculation
+        - a: Scaling constant
         - perturbation_strength: Strength of the perturbation
-        - M_user: Number of user-defined harmonics
-        - M_opt: Number of optimizer-controlled harmonics
+        - M: Total number of harmonics to be distributed between user and optimizer
         - pulse_time: Center time for the Gaussian pulse
         - pulse_amp: Amplitude of the Gaussian pulse
         - pulse_width: Width of the Gaussian pulse
@@ -27,8 +27,7 @@ class PerturbationConfig:
         self.G = G
         self.a = a
         self.perturbation_strength = perturbation_strength
-        self.M_user = M_user
-        self.M_opt = M_opt
+        self.M = M
         self.pulse_time = pulse_time
         self.pulse_amp = pulse_amp
         self.pulse_width = pulse_width
@@ -40,18 +39,19 @@ class PerturbationConfig:
         # Check if the pulse width is large enough to be detected given the sampling interval
         self.validate_pulse_width()
 
-        # TODO add validation that a is positive
-
         # Time array
         self._t = jnp.linspace(0.001, T, N)
 
-        # Precompute harmonic indices for user-defined and optimizer-controlled harmonics
-        self._n_user = jnp.arange(1, M_user + 1)
-        self._n_opt = jnp.arange(M_user + 1, M_user + M_opt + 1)
+        # Create the full harmonic range up to M
+        full_harmonic_range = jnp.arange(1, M + 1)
 
-        # Generate p_user as random perturbation parameters (hidden from direct access)
+        # Assign alternating indices to user and optimizer harmonics
+        self._n_user = full_harmonic_range[::2]  # Odd indices
+        self._n_opt = full_harmonic_range[1::2]  # Even indices
+
+        # Generate p_user as random perturbation parameters for user harmonics
         key = jax.random.PRNGKey(1)  # fixed seed for reproducibility
-        self._p_user = jax.random.normal(key, shape=(2 * M_user,)) * 0.01 * self.perturbation_strength
+        self._p_user = jax.random.normal(key, shape=(2 * len(self._n_user),)) * 0.01 * self.perturbation_strength
 
     def validate_pulse_width(self):
         """Check if pulse width is sufficiently larger than the sampling interval."""
@@ -91,5 +91,6 @@ class PerturbationConfig:
     def display(self):
         """Optional method to display configuration details for debugging or logging."""
         print(f"PerturbationConfig:\n T={self.T}, N={self.N}, C={self.C}, "
-              f"perturbation_strength={self.perturbation_strength}, M_user={self.M_user}, M_opt={self.M_opt}")
+              f"perturbation_strength={self.perturbation_strength}, M={self.M}")
         print(f"Harmonic Indices:\n n_user={self.n_user}, n_opt={self.n_opt}")
+

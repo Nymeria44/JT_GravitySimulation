@@ -18,6 +18,9 @@ from optimisations import (
 
 from config import PerturbationConfig  # Import the configuration class
 
+# TODO seperate out sin and cos terms
+# TODO modifying frequency factor for derivative order
+# TODO shift the phase of sin and cos terms based on derivative order
 
 def calculate_delta_f(t, p, M, T, n, order=0, pulse_time=None, pulse_amp=0, pulse_width=0.00):
     """
@@ -108,7 +111,7 @@ def calculate_f(p_opt, config: PerturbationConfig, order=0):
 
     # User perturbation derivative of the specified order
     delta_f_user = calculate_delta_f(
-        t, config.p_user, config.M_user,
+        t, config.p_user, len(config.n_user),
         config.T, config.n_user,
         order=order,
         pulse_time=config.pulse_time,
@@ -118,7 +121,7 @@ def calculate_f(p_opt, config: PerturbationConfig, order=0):
 
     # Optimizer perturbation derivative of the specified order
     delta_f_opt = calculate_delta_f(
-        t, p_opt, config.M_opt,
+        t, p_opt, len(config.n_opt),
         config.T, config.n_opt,
         order=order
     )

@@ -39,9 +39,8 @@ def main():
         a = 1,  # back reaction stability parameter (postive constant)
 
         # Fourier perturbation settings
-        perturbation_strength=40, # Magnitude of user Fourier Pertubation
-        M_user=10,                 # Number of Fourier modes for user-defined perturbation
-        M_opt=40,                # Number of Fourier modes controlled by optimiser
+        perturbation_strength=20, # Magnitude of user Fourier Pertubation
+        M=90,                 # Number of Fourier series harmonics (split 50/50 between user and optimizer)
 
         # Gaussian pulse settings
         pulse_time=0,             # Center of Gaussian pulse
@@ -52,7 +51,7 @@ def main():
 
     # Initial guess for optimizer-controlled parameters
     key_opt = jax.random.PRNGKey(0)
-    p_initial = jax.random.normal(key_opt, shape=(2 * PertConfig .M_opt,)) * 0.01
+    p_initial = jax.random.normal(key_opt, shape=(2 * len(PertConfig._n_opt),)) * 0.01
 
     # Define the objective function to minimize, with config encapsulating all parameters
     def objective_function(p):
