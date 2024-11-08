@@ -39,8 +39,9 @@ def main():
         a = 1,  # back reaction stability parameter (postive constant)
 
         # Fourier perturbation settings
-        perturbation_strength=20, # Magnitude of user Fourier Pertubation
-        M=90,                 # Number of Fourier series harmonics (split 50/50 between user and optimizer)
+        perturbation_strength=0, # Magnitude of user Fourier Pertubation
+        M_user=10,                 # Number of Fourier series harmonics (split 50/50 between user and optimizer)
+        M_opt=50,
 
         # Gaussian pulse settings
         pulse_time=0,             # Center of Gaussian pulse
@@ -49,9 +50,12 @@ def main():
     )
     PertConfig.validate_pulse_width() # Checking pulse width isn't too small to be detected
 
+    # Call the debug information function
+    PertConfig.debug_info()
+
     # Initial guess for optimizer-controlled parameters
     key_opt = jax.random.PRNGKey(0)
-    p_initial = jax.random.normal(key_opt, shape=(2 * len(PertConfig._n_opt),)) * 0.01
+    p_initial = jax.random.normal(key_opt, shape=(2 * PertConfig.M_opt,))
 
     # Define the objective function to minimize, with config encapsulating all parameters
     def objective_function(p):

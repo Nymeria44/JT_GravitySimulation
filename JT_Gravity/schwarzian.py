@@ -107,11 +107,11 @@ def calculate_f(p_opt, config: PerturbationConfig, order=0):
     Returns:
     - f_derivative: The specified derivative of f(t)
     """
-    t = config.t
+    t = config._t
 
     # User perturbation derivative of the specified order
     delta_f_user = calculate_delta_f(
-        t, config.p_user, len(config.n_user),
+        t, config.p_user, config.M_user,
         config.T, config.n_user,
         order=order,
         pulse_time=config.pulse_time,
@@ -121,7 +121,7 @@ def calculate_f(p_opt, config: PerturbationConfig, order=0):
 
     # Optimizer perturbation derivative of the specified order
     delta_f_opt = calculate_delta_f(
-        t, p_opt, len(config.n_opt),
+        t, p_opt, config.M_opt,
         config.T, config.n_opt,
         order=order
     )
