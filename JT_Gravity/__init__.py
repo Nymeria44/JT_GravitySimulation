@@ -39,9 +39,9 @@ def main():
         a = 1,  # back reaction stability parameter (postive constant)
 
         # Fourier perturbation settings
-        perturbation_strength=0, # Magnitude of user Fourier Pertubation
-        M_user=10,                 # Number of Fourier series harmonics (split 50/50 between user and optimizer)
-        M_opt=50,
+        perturbation_strength=0.1, # Magnitude of user Fourier Pertubation
+        M_user=60,                 # Number of Fourier series harmonics (split 50/50 between user and optimizer)
+        M_opt=30,
 
         # Gaussian pulse settings
         pulse_time=0,             # Center of Gaussian pulse

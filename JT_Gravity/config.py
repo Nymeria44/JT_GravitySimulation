@@ -8,18 +8,6 @@ class PerturbationConfig:
         """
         Initialize the configuration with user-defined perturbation parameters and optimizer settings.
         Precompute the harmonic indices (n_user, n_opt) and generate p_user based on M_user and M_opt values.
-
-        Parameters:
-        - T: Period of the perturbation
-        - N: Number of time samples
-        - G: Constant for gravitational calculation
-        - a: Scaling constant
-        - perturbation_strength: Strength of the perturbation
-        - M_user: Number of harmonics for user control
-        - M_opt: Number of harmonics for optimizer control
-        - pulse_time: Center time for the Gaussian pulse
-        - pulse_amp: Amplitude of the Gaussian pulse
-        - pulse_width: Width of the Gaussian pulse
         """
         
         # Primary parameters
@@ -44,22 +32,8 @@ class PerturbationConfig:
         # Time array
         self._t = jnp.linspace(0.001, T, N)
 
-        # Create the harmonic range up to max(M_user + M_opt)
-        total_M = self.M_user + self.M_opt
-        full_harmonic_range = jnp.arange(1, total_M + 1)
-
-        # Assign harmonics to user and optimizer up to their respective limits
-        self._n_user = full_harmonic_range[::2][:self.M_user]  # Assign up to M_user harmonics
-        self._n_opt = full_harmonic_range[1::2][:self.M_opt]  # Assign up to M_opt harmonics
-
-        # If M_user or M_opt harmonics are exhausted, extend the other with remaining values
-        if len(self._n_user) < self.M_user:
-            remaining_user = full_harmonic_range[2 * len(self._n_user):][:self.M_user - len(self._n_user)]
-            self._n_user = jnp.concatenate([self._n_user, remaining_user])
-
-        if len(self._n_opt) < self.M_opt:
-            remaining_opt = full_harmonic_range[2 * len(self._n_opt):][:self.M_opt - len(self._n_opt)]
-            self._n_opt = jnp.concatenate([self._n_opt, remaining_opt])
+        # Assign harmonics alternately to user and optimizer
+        self._n_user, self._n_opt = self.assign_alternating_harmonics(M_user, M_opt)
 
         # Generate p_user as random perturbation parameters for user harmonics
         key = jax.random.PRNGKey(1)  # fixed seed for reproducibility
@@ -80,20 +54,49 @@ class PerturbationConfig:
                 f"Consider setting pulse_width to at least {min_pulse_width:.5f} to ensure the pulse is captured."
             )
 
+    def assign_alternating_harmonics(self, M_user, M_opt):
+        """
+        Distribute harmonics alternately between user and optimizer up to the required counts.
+        If one needs more harmonics than the other, assign the remaining harmonics in sequence.
+        
+        Returns:
+        - n_user: Harmonic indices for the user
+        - n_opt: Harmonic indices for the optimizer
+        """
+        total_harmonics = M_user + M_opt
+        harmonics = jnp.arange(1, total_harmonics + 1)
+
+        # Alternate assignment of harmonics
+        n_user, n_opt = [], []
+        for i, harmonic in enumerate(harmonics):
+            if i % 2 == 0 and len(n_user) < M_user:
+                n_user.append(harmonic)
+            elif i % 2 == 1 and len(n_opt) < M_opt:
+                n_opt.append(harmonic)
+
+        # Assign any remaining harmonics to the list that needs more
+        remaining = harmonics[len(n_user) + len(n_opt):]
+        if len(n_user) < M_user:
+            n_user.extend(remaining)
+        else:
+            n_opt.extend(remaining)
+
+        return jnp.array(n_user), jnp.array(n_opt)
+
     def debug_info(self):
-            """Print detailed information for debugging."""
-            print("PerturbationConfig Debug Information:")
-            print(f"  T = {self.T}, N = {self.N}")
-            print(f"  Gravitational constant (G) = {self.G}")
-            print(f"  Stability parameter (a) = {self.a}")
-            print(f"  Perturbation strength = {self.perturbation_strength}")
-            print(f"  Number of harmonics (User) = {self.M_user}, Number of harmonics (Optimizer) = {self.M_opt}")
-            print(f"  Pulse time = {self.pulse_time}, Pulse amplitude = {self.pulse_amp}, Pulse width = {self.pulse_width}")
-            print(f"  Computed kappa = {self.kappa}, Computed C = {self.C}")
-            print(f"  Harmonic indices (User) = {self._n_user}")
-            print(f"  Harmonic indices (Optimizer) = {self._n_opt}")
-            print(f"  User-controlled perturbation parameters (p_user) = {self._p_user}")
-            print(f"  Time array (t) shape = {self._t.shape}")
+        """Print detailed information for debugging."""
+        print("PerturbationConfig Debug Information:")
+        print(f"  T = {self.T}, N = {self.N}")
+        print(f"  Gravitational constant (G) = {self.G}")
+        print(f"  Stability parameter (a) = {self.a}")
+        print(f"  Perturbation strength = {self.perturbation_strength}")
+        print(f"  Number of harmonics (User) = {self.M_user}, Number of harmonics (Optimizer) = {self.M_opt}")
+        print(f"  Pulse time = {self.pulse_time}, Pulse amplitude = {self.pulse_amp}, Pulse width = {self.pulse_width}")
+        print(f"  Computed kappa = {self.kappa}, Computed C = {self.C}")
+        print(f"  Harmonic indices (User) = {self._n_user}")
+        print(f"  Harmonic indices (Optimizer) = {self._n_opt}")
+        print(f"  User-controlled perturbation parameters (p_user) = {self._p_user}")
+        print(f"  Time array (t) shape = {self._t.shape}")
 
     @property
     def t(self):
