@@ -7,11 +7,15 @@ import sys  # To check command-line arguments
 
 from schwarzian import (
     action_to_minimize,
+    reparameterise_ft
+)
+
+from results import (
     print_optimization_results,
-    reparameterise_ft,
     plot_f_vs_ft,
     plot_deviation_from_f
 )
+
 from config import PerturbationConfig
 from harmonic_sweep import harmonic_sweep  # Import the sweep function
 
@@ -40,7 +44,7 @@ def main():
         # Fourier perturbation settings
         perturbation_strength=0.1, # Magnitude of user Fourier Pertubation
         M_user=5,                 # Number of Fourier series harmonics (split 50/50 between user and optimizer)
-        M_opt=30,
+        M_opt=20,
 
         # Gaussian pulse settings
         pulse_time=0,             # Center of Gaussian pulse
@@ -68,8 +72,8 @@ def main():
 
     # Print results and plot
     print_optimization_results(results['action_values'], results['times_taken'])
-    plot_f_vs_ft(results['optimized_params'], p_initial, PertConfig )
-    plot_deviation_from_f(results['optimized_params'], p_initial, PertConfig)
+    plot_f_vs_ft(results, PertConfig)
+    plot_deviation_from_f(results, PertConfig)
 
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "sweep":
