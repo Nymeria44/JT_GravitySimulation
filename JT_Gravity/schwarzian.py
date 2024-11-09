@@ -24,8 +24,7 @@ from config import PerturbationConfig  # Import the configuration class
 
 def calculate_delta_f(t, p, M, T, n, order=0, pulse_time=None, pulse_amp=0, pulse_width=0.00):
     """
-    Calculate the Fourier series terms and its derivatives up to a specified order,
-    and optionally add a Gaussian pulse (and its derivatives) to simulate a Dirac delta function approximation.
+    Calculate the Fourier series terms / Gaussian pulse and their derivatives
 
     Parameters:
     - t: time variable
@@ -97,7 +96,7 @@ def calculate_delta_f(t, p, M, T, n, order=0, pulse_time=None, pulse_amp=0, puls
 
 def calculate_f(p_opt, config: PerturbationConfig, order=0):
     """
-    Generalized function to calculate f(t) and its derivatives up to the specified order.
+    Generalized function to calculate f(t) and its derivatives.
     
     Parameters:
     - p_opt: Optimizer-controlled Fourier coefficients
@@ -107,13 +106,12 @@ def calculate_f(p_opt, config: PerturbationConfig, order=0):
     Returns:
     - f_derivative: The specified derivative of f(t)
     """
-    t = config._t
 
     # User perturbation derivative of the specified order
     delta_f_user = calculate_delta_f(
-        t, config.p_user, config.M_user,
-        config.T, config.n_user,
-        order=order,
+        config._t, config.p_user, 
+        config.M_user, config.T, 
+        config.n_user, order=order,
         pulse_time=config.pulse_time,
         pulse_amp=config.pulse_amp,
         pulse_width=config.pulse_width
@@ -121,14 +119,14 @@ def calculate_f(p_opt, config: PerturbationConfig, order=0):
 
     # Optimizer perturbation derivative of the specified order
     delta_f_opt = calculate_delta_f(
-        t, p_opt, config.M_opt,
-        config.T, config.n_opt,
-        order=order
+        config._t, p_opt, 
+        config.M_opt, config.T, 
+        config.n_opt, order=order
     )
 
     # Combine user and optimizer perturbations with baseline
     if order == 0:
-        return t + delta_f_user + delta_f_opt
+        return config._t + delta_f_user + delta_f_opt
     else:
         # Add 1 for the baseline derivative of f(t) = t when order == 1
         return (1 if order == 1 else 0) + delta_f_user + delta_f_opt
@@ -192,6 +190,31 @@ def run_optimizations(action_to_minimize, p_initial, config):
         results["optimized_params"][method_name] = p_optimal
         results["action_values"][method_name] = action_value
         results["times_taken"][method_name] = time_taken
+
+    return results
+
+def reparameterise_ft(action_to_minimize, p_initial, config, pert_config):
+    """
+    Runs optimization to reparameterize f(t) and includes f(t) in the results.
+
+    Parameters:
+    - action_to_minimize (function): The function to minimize.
+    - p_initial (array): Initial parameter guess.
+    - config (dict): Configuration dict specifying which optimizers to use.
+    - pert_config (PerturbationConfig): Perturbation configuration for calculating f(t).
+
+    Returns:
+    - dict: A dictionary with method names as keys, containing optimized results,
+      including optimized parameters, action values, times taken, and f(t) values.
+    """
+    # Run optimizations and get base results
+    results = run_optimizations(action_to_minimize, p_initial, config)
+
+    # Calculate f(t) for each optimizer's result and add to results
+    results["f_t"] = {}
+    for method_name, p_optimal in results["optimized_params"].items():
+        f_t_values = calculate_f(p_optimal, pert_config, order=0)
+        results["f_t"][method_name] = f_t_values  # Store f(t) values for each optimizer
 
     return results
 

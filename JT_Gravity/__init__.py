@@ -6,9 +6,9 @@ import os
 import sys  # To check command-line arguments
 
 from schwarzian import (
-    run_optimizations,
     action_to_minimize,
     print_optimization_results,
+    reparameterise_ft,
     plot_f_vs_ft,
     plot_deviation_from_f
 )
@@ -59,10 +59,11 @@ def main():
         return action_to_minimize(p, PertConfig)
 
     # Run optimizations
-    results = run_optimizations(
+    results = reparameterise_ft(
         action_to_minimize=objective_function,
         p_initial=p_initial,
-        config=OPTIMIZER_CONFIG
+        config=OPTIMIZER_CONFIG,
+        pert_config=PertConfig
     )
 
     # Print results and plot
