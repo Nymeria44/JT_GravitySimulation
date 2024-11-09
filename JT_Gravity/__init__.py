@@ -38,6 +38,7 @@ def main():
     PertConfig = PerturbationConfig(
         # Core parameters
         T=10.0,                   # Total sim time
+        Z = 10.0,
         N=1000000,                  # Number of time samples
         G = 1,  # Gravitational constant in 2D
         a = 1,  # back reaction stability parameter (postive constant)

@@ -43,6 +43,7 @@ def harmonic_sweep():
             # Initialize PerturbationConfig with correct harmonic assignment
             PertConfig = PerturbationConfig(
                 T=10.0,
+                Z = 10.0,
                 N=1000000,
                 G=1,
                 a=1,
