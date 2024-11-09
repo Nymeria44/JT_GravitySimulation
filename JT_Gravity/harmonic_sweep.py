@@ -23,10 +23,8 @@ def harmonic_sweep():
     with the enabled optimizers, and recording the results.
     """
     # Define harmonic sweep ranges
-    # M_user_range = [5, 10, 12, 15]
-    # M_opt_range = [10, 20, 30, 40]
-    M_user_range = [5]
-    M_opt_range = [10]
+    M_user_range = [5, 10, 12, 15]
+    M_opt_range = [10, 20, 30, 40]
 
     # Dynamically determine active optimizers
     active_optimizers = [opt for opt, enabled in OPTIMIZER_CONFIG.items() if enabled]
