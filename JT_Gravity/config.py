@@ -4,7 +4,7 @@ import jax.numpy as jnp
 import jax
 
 class PerturbationConfig:
-    def __init__(self, T, N, G, a, perturbation_strength, M_user, M_opt, pulse_time, pulse_amp, pulse_width):
+    def __init__(self, T, Z, N, G, a, perturbation_strength, M_user, M_opt, pulse_time, pulse_amp, pulse_width):
         """
         Initialize the configuration with user-defined perturbation parameters and optimizer settings.
         Precompute the harmonic indices (n_user, n_opt) and generate p_user based on M_user and M_opt values.
@@ -12,6 +12,7 @@ class PerturbationConfig:
         
         # Primary parameters
         self.T = T
+        self.Z = Z
         self.N = N
         self.G = G
         self.a = a
@@ -22,15 +23,15 @@ class PerturbationConfig:
         self.pulse_amp = pulse_amp
         self.pulse_width = pulse_width
 
+        # Calculate space-time volume
+        self.setup_coordinates()
+
         # Calculated constants
         self.kappa = (8 * jnp.pi * self.G) / self.a
         self.C = self.a / (16 * jnp.pi * self.G)
 
         # Check if the pulse width is large enough to be detected given the sampling interval
         self.validate_pulse_width()
-
-        # Time array
-        self._t = jnp.linspace(0.001, T, N)
 
         # Assign harmonics alternately to user and optimizer
         self._n_user, self._n_opt = self.assign_harmonics(M_user, M_opt)
@@ -86,10 +87,58 @@ class PerturbationConfig:
         # Convert lists to JAX arrays
         return jnp.array(n_user), jnp.array(n_opt)
 
+
+    def setup_coordinates(self):
+        """
+        Sets up the default, unchangeable time (_t) and spatial (_z) grids, and corresponding lightcone coordinates (_u, _v).
+        """
+        # Time array for t
+        self._t = jnp.linspace(0.001, self.T, self.N)
+
+        # Spatial array for z
+        self._z = jnp.linspace(0, self.Z, self.N)
+
+        # Generate meshgrids for t and z
+        T_grid, Z_grid = jnp.meshgrid(self._t, self._z, indexing="ij")
+
+        # Calculate u and v based on t and z
+        self._u = T_grid + Z_grid
+        self._v = T_grid - Z_grid
+
+    def to_bulk_coordinates(self, u, v):
+        """
+        Convert lightcone coordinates (u, v) to bulk coordinates (t, z).
+        
+        Parameters:
+        - u (float or array): Lightcone coordinate u.
+        - v (float or array): Lightcone coordinate v.
+        
+        Returns:
+        - tuple: (t, z), where t = (u + v) / 2 and z = (u - v) / 2.
+        """
+        t = (u + v) / 2
+        z = (u - v) / 2
+        return t, z
+
+    def to_lightcone_coordinates(self, t, z):
+        """
+        Convert bulk coordinates (t, z) to lightcone coordinates (u, v).
+        
+        Parameters:
+        - t (float or array): Bulk time coordinate.
+        - z (float or array): Bulk spatial coordinate.
+        
+        Returns:
+        - tuple: (u, v), where u = t + z and v = t - z.
+        """
+        u = t + z
+        v = t - z
+        return u, v
+
     def debug_info(self):
         """Print detailed information for debugging."""
         print("PerturbationConfig Debug Information:")
-        print(f"  T = {self.T}, N = {self.N}")
+        print(f"  T = {self.T}, Z = {self.Z}, N = {self.N}")
         print(f"  Gravitational constant (G) = {self.G}")
         print(f"  Stability parameter (a) = {self.a}")
         print(f"  Perturbation strength = {self.perturbation_strength}")
@@ -100,11 +149,28 @@ class PerturbationConfig:
         print(f"  Harmonic indices (Optimizer) = {self._n_opt}")
         print(f"  User-controlled perturbation parameters (p_user) = {self._p_user}")
         print(f"  Time array (t) shape = {self._t.shape}")
+        print(f"  Spatial array (z) shape = {self._z.shape}")
+        print(f"  Lightcone coordinate arrays (u, v) shapes = {self._u.shape}, {self._v.shape}")
 
     @property
     def t(self):
         """Time array for the perturbation."""
         return self._t
+
+    @property
+    def z(self):
+        """Spatial array for the perturbation (z)."""
+        return self._z
+
+    @property
+    def u(self):
+        """Lightcone coordinate array (u)."""
+        return self._u
+
+    @property
+    def v(self):
+        """Lightcone coordinate array (v)."""
+        return self._v
 
     @property
     def n_user(self):
