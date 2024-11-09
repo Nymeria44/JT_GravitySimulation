@@ -19,17 +19,22 @@ def print_optimization_results(results, verbose=False):
         print(f"{method_name}: {action_value} | Time Taken: {results['times_taken'][method_name]:.4f} seconds")
         
         if verbose:
-            # Print f(t) array
+            # Print f(t) summary
             f_t_values = results["f_t"].get(method_name)
             if f_t_values is not None:
-                print(f"\nf(t) for {method_name}:\n{f_t_values}")
-            
-            # Print optimized parameters (coefficients)
+
+                print(f"\nf(t) for {method_name}:")
+                print(f"  First 5 values: {f_t_values[:5]}")
+                print(f"  Last 5 values: {f_t_values[-5:]}")
+                # Print summary statistics for f(t)
+                print(f"  Summary: min={f_t_values.min()}, max={f_t_values.max()}, "
+                      f"mean={f_t_values.mean()}, std={f_t_values.std()}")
+
+            # Print optimised parameters (Fourier coefficients)
             optimized_params = results["optimized_params"].get(method_name)
             if optimized_params is not None:
                 print(f"\nOptimized Parameters for {method_name}:\n{optimized_params}")
             print("\n" + "-"*50 + "\n")
-
 
 def plot_f_vs_ft(results, config: PerturbationConfig):
     """
