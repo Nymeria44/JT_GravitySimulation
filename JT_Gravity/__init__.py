@@ -40,7 +40,7 @@ def main():
 
         # Fourier perturbation settings
         perturbation_strength=0.1, # Magnitude of user Fourier Pertubation
-        M_user=60,                 # Number of Fourier series harmonics (split 50/50 between user and optimizer)
+        M_user=5,                 # Number of Fourier series harmonics (split 50/50 between user and optimizer)
         M_opt=30,
 
         # Gaussian pulse settings

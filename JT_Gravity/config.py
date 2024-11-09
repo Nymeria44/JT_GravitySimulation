@@ -57,11 +57,7 @@ class PerturbationConfig:
     def assign_alternating_harmonics(self, M_user, M_opt):
         """
         Distribute harmonics alternately between user and optimizer up to the required counts.
-        If one needs more harmonics than the other, assign the remaining harmonics in sequence.
-        
-        Returns:
-        - n_user: Harmonic indices for the user
-        - n_opt: Harmonic indices for the optimizer
+        Ensure harmonic indices are ordered in ascending sequence after assignment.
         """
         total_harmonics = M_user + M_opt
         harmonics = jnp.arange(1, total_harmonics + 1)
@@ -81,7 +77,8 @@ class PerturbationConfig:
         else:
             n_opt.extend(remaining)
 
-        return jnp.array(n_user), jnp.array(n_opt)
+        # Sort harmonics to ensure order
+        return jnp.array(sorted(n_user)), jnp.array(sorted(n_opt))
 
     def debug_info(self):
         """Print detailed information for debugging."""
