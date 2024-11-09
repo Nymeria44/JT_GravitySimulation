@@ -57,28 +57,34 @@ class PerturbationConfig:
     def assign_alternating_harmonics(self, M_user, M_opt):
         """
         Distribute harmonics alternately between user and optimizer up to the required counts.
-        Ensure harmonic indices are ordered in ascending sequence after assignment.
+        If one list is exhausted, assign remaining harmonics to the other list.
+        
+        Returns:
+        - n_user: Harmonic indices for the user
+        - n_opt: Harmonic indices for the optimizer
         """
+        n_user, n_opt = [], []
         total_harmonics = M_user + M_opt
         harmonics = jnp.arange(1, total_harmonics + 1)
 
-        # Alternate assignment of harmonics
-        n_user, n_opt = [], []
-        for i, harmonic in enumerate(harmonics):
-            if i % 2 == 0 and len(n_user) < M_user:
-                n_user.append(harmonic)
-            elif i % 2 == 1 and len(n_opt) < M_opt:
-                n_opt.append(harmonic)
+        assign_to_user = True  # Flag to alternate assignments
 
-        # Assign any remaining harmonics to the list that needs more
-        remaining = harmonics[len(n_user) + len(n_opt):]
-        if len(n_user) < M_user:
-            n_user.extend(remaining)
-        else:
-            n_opt.extend(remaining)
-
-        # Sort harmonics to ensure order
-        return jnp.array(sorted(n_user)), jnp.array(sorted(n_opt))
+        for harmonic in harmonics:
+            if assign_to_user:
+                if len(n_user) < M_user:
+                    n_user.append(harmonic)
+                    assign_to_user = False  # Next assignment to optimizer
+                elif len(n_opt) < M_opt:
+                    n_opt.append(harmonic)
+            else:
+                if len(n_opt) < M_opt:
+                    n_opt.append(harmonic)
+                    assign_to_user = True  # Next assignment to user
+                elif len(n_user) < M_user:
+                    n_user.append(harmonic)
+        
+        # Convert lists to JAX arrays
+        return jnp.array(n_user), jnp.array(n_opt)
 
     def debug_info(self):
         """Print detailed information for debugging."""
