@@ -1,7 +1,9 @@
-# __init__.py file for JT_Gravity package
+# __init__.py
+
 import jax
 import matplotlib
 import os
+import sys  # To check command-line arguments
 
 from schwarzian import (
     run_optimizations,
@@ -10,14 +12,12 @@ from schwarzian import (
     plot_f_vs_ft,
     plot_deviation_from_f
 )
-
 from config import PerturbationConfig
+from harmonic_sweep import harmonic_sweep  # Import the sweep function
 
-# Environment setup
 os.environ['XLA_FLAGS'] = '--xla_gpu_triton_gemm_any=True'
 matplotlib.use('TkAgg')
 
-# Configuration dictionary to enable/disable specific optimizers
 OPTIMIZER_CONFIG = {
     "BFGS": False,
     "Adam (JAX)": True,
@@ -30,7 +30,6 @@ OPTIMIZER_CONFIG = {
 }
 
 def main():
-    # Initialize perturbation configuration, including user and optimizer parameters
     PertConfig = PerturbationConfig(
         # Core parameters
         T=10.0,                   # Total sim time
@@ -41,16 +40,14 @@ def main():
         # Fourier perturbation settings
         perturbation_strength=0.1, # Magnitude of user Fourier Pertubation
         M_user=5,                 # Number of Fourier series harmonics (split 50/50 between user and optimizer)
-        M_opt=40,
+        M_opt=30,
 
         # Gaussian pulse settings
         pulse_time=0,             # Center of Gaussian pulse
         pulse_amp=0,              # Amplitude of Gaussian pulse
         pulse_width=0             # Width of Gaussian pulse
     )
-    PertConfig.validate_pulse_width() # Checking pulse width isn't too small to be detected
-
-    # Call the debug information function
+    PertConfig.validate_pulse_width()
     PertConfig.debug_info()
 
     # Initial guess for optimizer-controlled parameters
@@ -74,4 +71,7 @@ def main():
     plot_deviation_from_f(results['optimized_params'], p_initial, PertConfig)
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) > 1 and sys.argv[1] == "sweep":
+        harmonic_sweep()
+    else:
+        main()
