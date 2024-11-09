@@ -33,7 +33,7 @@ class PerturbationConfig:
         self._t = jnp.linspace(0.001, T, N)
 
         # Assign harmonics alternately to user and optimizer
-        self._n_user, self._n_opt = self.assign_alternating_harmonics(M_user, M_opt)
+        self._n_user, self._n_opt = self.assign_harmonics(M_user, M_opt)
 
         # Generate p_user as random perturbation parameters for user harmonics
         key = jax.random.PRNGKey(1)  # fixed seed for reproducibility
@@ -54,7 +54,7 @@ class PerturbationConfig:
                 f"Consider setting pulse_width to at least {min_pulse_width:.5f} to ensure the pulse is captured."
             )
 
-    def assign_alternating_harmonics(self, M_user, M_opt):
+    def assign_harmonics(self, M_user, M_opt):
         """
         Distribute harmonics alternately between user and optimizer up to the required counts.
         If one list is exhausted, assign remaining harmonics to the other list.
