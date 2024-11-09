@@ -71,7 +71,7 @@ def main():
     )
 
     # Print results and plot
-    print_optimization_results(results['action_values'], results['times_taken'])
+    print_optimization_results(results, verbose=True)
     plot_f_vs_ft(results, PertConfig)
     plot_deviation_from_f(results, PertConfig)
 

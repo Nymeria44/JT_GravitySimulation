@@ -1,24 +1,34 @@
 # results.py
 
-import jax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 
 from config import PerturbationConfig  # Import the configuration class
 
-def print_optimization_results(action_values, times_taken):
+def print_optimization_results(results, verbose=False):
     """
-    Print the final action values and computation time for each optimization method.
+    Print the final action values, computation time, and optionally detailed values for each optimization method.
 
     Parameters:
-    - action_values (dict): Final action values from each optimizer.
-    - times_taken (dict): Computation time taken for each optimizer.
+    - results (dict): Dictionary containing action values, times taken, f(t) values, and optimized parameters.
+    - verbose (bool): Whether to print detailed information including f(t) arrays and coefficients.
     """
 
     print("\nFinal Action Values and Time Comparison:")
-    for method_name, action_value in action_values.items():
-        print(f"{method_name}: {action_value} | Time Taken: {times_taken[method_name]:.4f} seconds")
-
+    for method_name, action_value in results["action_values"].items():
+        print(f"{method_name}: {action_value} | Time Taken: {results['times_taken'][method_name]:.4f} seconds")
+        
+        if verbose:
+            # Print f(t) array
+            f_t_values = results["f_t"].get(method_name)
+            if f_t_values is not None:
+                print(f"\nf(t) for {method_name}:\n{f_t_values}")
+            
+            # Print optimized parameters (coefficients)
+            optimized_params = results["optimized_params"].get(method_name)
+            if optimized_params is not None:
+                print(f"\nOptimized Parameters for {method_name}:\n{optimized_params}")
+            print("\n" + "-"*50 + "\n")
 
 
 def plot_f_vs_ft(results, config: PerturbationConfig):
