@@ -13,7 +13,8 @@ from schwarzian import (
 from results import (
     print_optimization_results,
     plot_f_vs_ft,
-    plot_deviation_from_f
+    plot_deviation_from_f,
+    select_best_optimizer
 )
 
 from config import PerturbationConfig
@@ -70,10 +71,12 @@ def main():
         pert_config=PertConfig
     )
 
-    # Print results and plot
+    # Print results and plot for optimizers
     print_optimization_results(results, verbose=True)
     plot_f_vs_ft(results, PertConfig)
     plot_deviation_from_f(results, PertConfig)
+
+    f_t = select_best_optimizer(results)
 
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "sweep":
