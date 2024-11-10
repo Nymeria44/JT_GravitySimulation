@@ -2,7 +2,6 @@
 
 import jax
 import jax.numpy as jnp
-import matplotlib.pyplot as plt
 
 # Custom Imports from `optimisations.py`
 from optimisations import (
@@ -92,17 +91,9 @@ def calculate_delta_g(t, p, M, T, n, order=0, pulse_time=None, pulse_amp=0, puls
 
 def calculate_f(p_opt, config: PerturbationConfig, order=0):
     """
-    Generalized function to calculate f(t) and its derivatives based on the new parameterization.
-
-    Parameters:
-    - p_opt: Optimizer-controlled Fourier coefficients (1D array)
-    - config: PerturbationConfig object containing user and optimizer parameters
-    - order: The derivative order (0 for f(t), 1 for f'(t), etc.)
-
-    Returns:
-    - f_derivative: The specified derivative of f(t) (1D array)
+    Generalized function to calculate f(t) and its derivatives using log-dampened approach.
     """
-    # Compute delta_g_user and delta_g_opt
+    # Compute delta_g_user and delta_g_opt (keep existing code)
     delta_g_user = calculate_delta_g(
         t=config._t, p=config.p_user,
         M=config.M_user, T=config.T,
@@ -122,72 +113,81 @@ def calculate_f(p_opt, config: PerturbationConfig, order=0):
     g_t = delta_g_user + delta_g_opt
 
     if order == 0:
-        # Compute f(t) = t + integral of exp(g(s)) ds from 0 to t
-        e_gt = jnp.exp(g_t)
+        # Use log1p(exp(x)) for numerical stability
+        # This grows more slowly than exp(x) while maintaining monotonicity
+        dampened_exp = jnp.log1p(jnp.exp(g_t))
+        
         # Compute the integral using cumulative sum
-        integral_e_gt = jnp.cumsum(e_gt) * config.dt  # Assuming uniform time steps
-        f_t = config._t + integral_e_gt
+        integral_dampened = jnp.cumsum(dampened_exp) * config.dt
+        f_t = config._t + integral_dampened
         return f_t
+        
     elif order == 1:
-        # First derivative: f'(t) = 1 + exp(g(t))
-        e_gt = jnp.exp(g_t)
-        f_prime = 1 + e_gt
+        # First derivative: f'(t) = 1 + exp(g(t))/(1 + exp(g(t)))
+        # This is the derivative of log1p(exp(x))
+        f_prime = 1 + jnp.exp(g_t) / (1 + jnp.exp(g_t))
         return f_prime
+        
     elif order == 2:
-        # Second derivative: f''(t) = exp(g(t)) * g'(t)
+        # Second derivative: f''(t) = exp(g(t))*g'(t)/(1 + exp(g(t)))^2
         e_gt = jnp.exp(g_t)
+        denominator = (1 + e_gt) ** 2
+        
         # Compute g'(t)
         delta_g_user_prime = calculate_delta_g(
             t=config._t, p=config.p_user, 
             M=config.M_user, T=config.T, 
             n=config.n_user, order=1,
-            pulse_time=config.pulse_time, 
-            pulse_amp=config.pulse_amp, 
+            pulse_time=config.pulse_time,
+            pulse_amp=config.pulse_amp,
             pulse_width=config.pulse_width
         )
+        
         delta_g_opt_prime = calculate_delta_g(
-            t=config._t, p=p_opt, 
-            M=config.M_opt, T=config.T, 
+            t=config._t, p=p_opt,
+            M=config.M_opt, T=config.T,
             n=config.n_opt, order=1
         )
+        
         g_prime = delta_g_user_prime + delta_g_opt_prime
-        f_double_prime = e_gt * g_prime
+        f_double_prime = (e_gt * g_prime) / denominator
         return f_double_prime
+        
     elif order == 3:
-        # Third derivative: f'''(t) = exp(g(t)) * [g''(t) + (g'(t))^2]
+        # Third derivative involves chain rule and product rule
         e_gt = jnp.exp(g_t)
-        # Compute g'(t)
-        delta_g_user_prime = calculate_delta_g(
-            t=config._t, p=config.p_user, 
-            M=config.M_user, T=config.T, 
-            n=config.n_user, order=1,
-            pulse_time=config.pulse_time, 
-            pulse_amp=config.pulse_amp, 
-            pulse_width=config.pulse_width
-        )
-        delta_g_opt_prime = calculate_delta_g(
-            t=config._t, p=p_opt, 
-            M=config.M_opt, T=config.T, 
-            n=config.n_opt, order=1
-        )
-        g_prime = delta_g_user_prime + delta_g_opt_prime
-        # Compute g''(t)
-        delta_g_user_double_prime = calculate_delta_g(
-            t=config._t, p=config.p_user, 
-            M=config.M_user, T=config.T, 
-            n=config.n_user, order=2,
-            pulse_time=config.pulse_time, 
-            pulse_amp=config.pulse_amp, 
-            pulse_width=config.pulse_width
-        )
-        delta_g_opt_double_prime = calculate_delta_g(
-            t=config._t, p=p_opt, 
-            M=config.M_opt, T=config.T, 
-            n=config.n_opt, order=2
-        )
-        g_double_prime = delta_g_user_double_prime + delta_g_opt_double_prime
-        f_triple_prime = e_gt * (g_double_prime + g_prime ** 2)
+        denominator = (1 + e_gt) ** 3
+        
+        # Get g'(t), g''(t), and g'''(t)
+        derivatives = []
+        for derivative_order in range(1, 4):
+            delta_g_user_n = calculate_delta_g(
+                t=config._t, p=config.p_user,
+                M=config.M_user, T=config.T,
+                n=config.n_user, order=derivative_order,
+                pulse_time=config.pulse_time,
+                pulse_amp=config.pulse_amp,
+                pulse_width=config.pulse_width
+            )
+            
+            delta_g_opt_n = calculate_delta_g(
+                t=config._t, p=p_opt,
+                M=config.M_opt, T=config.T,
+                n=config.n_opt, order=derivative_order
+            )
+            
+            derivatives.append(delta_g_user_n + delta_g_opt_n)
+        
+        g_prime, g_double_prime, g_triple_prime = derivatives
+        
+        # Computing f'''(t) using the chain rule
+        term1 = e_gt * g_triple_prime
+        term2 = e_gt * g_prime * g_double_prime
+        term3 = -2 * e_gt * g_prime ** 3
+        
+        f_triple_prime = (term1 + term2 + term3) / denominator
         return f_triple_prime
+        
     else:
         raise ValueError("Order higher than 3 is not implemented.")
 
