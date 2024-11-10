@@ -25,13 +25,13 @@ matplotlib.use('TkAgg')
 
 OPTIMIZER_CONFIG = {
     "BFGS": False,
-    "Adam (JAX)": True,
-    "Adam (Optax)": True,
-    "Yogi": True,
+    "Adam (JAX)": False,
+    "Adam (Optax)": False,
+    "Yogi": False,
     "LBFGS": False,
-    "AdaBelief": True,
-    "Newton's Method": False,
-    "Hessian-based Optimization": False
+    "AdaBelief": False,
+    "Newton's Method": True,
+    "Hessian-based Optimization": True 
 }
 
 def main():
@@ -39,12 +39,12 @@ def main():
         # Core parameters
         T=10.0,                   # Total sim time
         Z = 10.0,
-        N=1000000,                  # Number of time samples
+        N=10000,                  # Number of time samples
         G = 1,  # Gravitational constant in 2D
         a = 1,  # back reaction stability parameter (postive constant)
 
         # Fourier perturbation settings
-        perturbation_strength=0.1, # Magnitude of user Fourier Pertubation
+        perturbation_strength=1, # Magnitude of user Fourier Pertubation
         M_user=5,                 # Number of Fourier series harmonics (split 50/50 between user and optimizer)
         M_opt=20,
 
@@ -58,7 +58,7 @@ def main():
 
     # Initial guess for optimizer-controlled parameters
     key_opt = jax.random.PRNGKey(0)
-    p_initial = jax.random.normal(key_opt, shape=(2 * PertConfig.M_opt,))
+    p_initial = jax.random.normal(key_opt, shape=(2 * PertConfig.M_opt,)) * 0.0001
 
     # Define the objective function to minimize, with config encapsulating all parameters
     def objective_function(p):
@@ -73,7 +73,7 @@ def main():
     )
 
     # Print results and plot for optimizers
-    print_optimization_results(results, verbose=True)
+    print_optimization_results(results, verbose=False)
     plot_f_vs_ft(results, PertConfig)
     plot_deviation_from_f(results, PertConfig)
 

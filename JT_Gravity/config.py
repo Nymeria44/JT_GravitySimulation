@@ -30,6 +30,9 @@ class PerturbationConfig:
         self.kappa = (8 * jnp.pi * self.G) / self.a
         self.C = self.a / (16 * jnp.pi * self.G)
 
+        # Define time step dt for numerical integration
+        self.dt = self.T / self.N  # Added line
+
         # Check if the pulse width is large enough to be detected given the sampling interval
         self.validate_pulse_width()
 
@@ -186,3 +189,4 @@ class PerturbationConfig:
     def p_user(self):
         """User-controlled perturbation parameters."""
         return self._p_user
+

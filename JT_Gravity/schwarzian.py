@@ -18,29 +18,25 @@ from optimisations import (
 
 from config import PerturbationConfig  # Import the configuration class
 
-# TODO seperate out sin and cos terms
-# TODO modifying frequency factor for derivative order
-# TODO shift the phase of sin and cos terms based on derivative order
-
-def calculate_delta_f(t, p, M, T, n, order=0, pulse_time=None, pulse_amp=0, pulse_width=0.00):
+def calculate_delta_g(t, p, M, T, n, order=0, pulse_time=None, pulse_amp=0, pulse_width=0.00):
     """
-    Calculate the Fourier series terms / Gaussian pulse and their derivatives
+    Calculate the Fourier series terms / Gaussian pulse and their derivatives for g(t)
 
     Parameters:
-    - t: time variable
-    - p: Fourier coefficients (sin and cos combined)
+    - t: time variable (1D array)
+    - p: Fourier coefficients (sin and cos combined) (1D array)
     - M: Number of terms in each series (sin and cos)
     - T: Period
-    - n: Array of harmonic indices
+    - n: Array of harmonic indices (1D array)
     - order: The derivative order (0 for the function itself, 1 for first derivative, etc.)
     - pulse_time: Center time for the Gaussian pulse (optional)
-    - pulse_amplitude: Amplitude of the Gaussian pulse (optional)
+    - pulse_amp: Amplitude of the Gaussian pulse (optional)
     - pulse_width: Width of the Gaussian pulse (optional, small for delta-like effect)
 
     Returns:
-    - delta_f: Fourier series perturbation or its derivative with optional Gaussian pulse
+    - delta_g: Fourier series perturbation or its derivative with optional Gaussian pulse (1D array)
     """
-    delta_f = 0  # Initialised to zero
+    delta_g = 0.0  # Initialized to zero
 
     if p is not None and p.size > 0:
         # Separate sine and cosine coefficients
@@ -64,14 +60,14 @@ def calculate_delta_f(t, p, M, T, n, order=0, pulse_time=None, pulse_amp=0, puls
             sin_terms = -jnp.cos(2 * jnp.pi * n[:, None] * t[None, :] / T)
             cos_terms = jnp.sin(2 * jnp.pi * n[:, None] * t[None, :] / T)
 
-        # Apply factor for each order to coefficients and calculate delta_f
-        delta_f = jnp.dot(sin_coeffs * factor, sin_terms) + jnp.dot(cos_coeffs * factor, cos_terms)
+        # Apply factor for each order to coefficients and calculate delta_g
+        delta_g = jnp.dot(sin_coeffs * factor, sin_terms) + jnp.dot(cos_coeffs * factor, cos_terms)
     
     # Optionally add a Gaussian pulse and its derivatives if pulse_time is specified
     if pulse_time is not None and pulse_amp != 0 and pulse_width != 0:
         # Gaussian pulse and its derivatives
         t_diff = t - pulse_time
-        gaussian_base = pulse_amp * (1 / jnp.sqrt(2 * jnp.pi * pulse_width**2))
+        gaussian_base = pulse_amp / jnp.sqrt(2 * jnp.pi * pulse_width**2)
         
         if order == 0:
             # 0th derivative: Gaussian pulse itself
@@ -89,64 +85,155 @@ def calculate_delta_f(t, p, M, T, n, order=0, pulse_time=None, pulse_amp=0, puls
             # Higher derivatives are not implemented here
             raise ValueError("Higher derivatives are not implemented for the Gaussian pulse")
 
-        # Add the Gaussian pulse or its derivative to delta_f
-        delta_f += gaussian_pulse
-    
-    return delta_f
+        # Add the Gaussian pulse or its derivative to delta_g
+        delta_g += gaussian_pulse
+
+    return delta_g
 
 def calculate_f(p_opt, config: PerturbationConfig, order=0):
     """
-    Generalized function to calculate f(t) and its derivatives.
-    
+    Generalized function to calculate f(t) and its derivatives based on the new parameterization.
+
     Parameters:
-    - p_opt: Optimizer-controlled Fourier coefficients
+    - p_opt: Optimizer-controlled Fourier coefficients (1D array)
     - config: PerturbationConfig object containing user and optimizer parameters
     - order: The derivative order (0 for f(t), 1 for f'(t), etc.)
 
     Returns:
-    - f_derivative: The specified derivative of f(t)
+    - f_derivative: The specified derivative of f(t) (1D array)
     """
-
-    # User perturbation derivative of the specified order
-    delta_f_user = calculate_delta_f(
-        config._t, config.p_user, 
-        config.M_user, config.T, 
-        config.n_user, order=order,
+    # Compute delta_g_user and delta_g_opt
+    delta_g_user = calculate_delta_g(
+        t=config._t, p=config.p_user,
+        M=config.M_user, T=config.T,
+        n=config.n_user, order=order,
         pulse_time=config.pulse_time,
         pulse_amp=config.pulse_amp,
         pulse_width=config.pulse_width
     )
 
-    # Optimizer perturbation derivative of the specified order
-    delta_f_opt = calculate_delta_f(
-        config._t, p_opt, 
-        config.M_opt, config.T, 
-        config.n_opt, order=order
+    delta_g_opt = calculate_delta_g(
+        t=config._t, p=p_opt,
+        M=config.M_opt, T=config.T,
+        n=config.n_opt, order=order
     )
 
-    # Combine user and optimizer perturbations with baseline
-    if order == 0:
-        return config._t + delta_f_user + delta_f_opt
-    else:
-        # Add 1 for the baseline derivative of f(t) = t when order == 1
-        return (1 if order == 1 else 0) + delta_f_user + delta_f_opt
+    # Total g(t) or its derivatives
+    g_t = delta_g_user + delta_g_opt
 
-# Define the Schwarzian derivative
+    if order == 0:
+        # Compute f(t) = t + integral of exp(g(s)) ds from 0 to t
+        e_gt = jnp.exp(g_t)
+        # Compute the integral using cumulative sum
+        integral_e_gt = jnp.cumsum(e_gt) * config.dt  # Assuming uniform time steps
+        f_t = config._t + integral_e_gt
+        return f_t
+    elif order == 1:
+        # First derivative: f'(t) = 1 + exp(g(t))
+        e_gt = jnp.exp(g_t)
+        f_prime = 1 + e_gt
+        return f_prime
+    elif order == 2:
+        # Second derivative: f''(t) = exp(g(t)) * g'(t)
+        e_gt = jnp.exp(g_t)
+        # Compute g'(t)
+        delta_g_user_prime = calculate_delta_g(
+            t=config._t, p=config.p_user, 
+            M=config.M_user, T=config.T, 
+            n=config.n_user, order=1,
+            pulse_time=config.pulse_time, 
+            pulse_amp=config.pulse_amp, 
+            pulse_width=config.pulse_width
+        )
+        delta_g_opt_prime = calculate_delta_g(
+            t=config._t, p=p_opt, 
+            M=config.M_opt, T=config.T, 
+            n=config.n_opt, order=1
+        )
+        g_prime = delta_g_user_prime + delta_g_opt_prime
+        f_double_prime = e_gt * g_prime
+        return f_double_prime
+    elif order == 3:
+        # Third derivative: f'''(t) = exp(g(t)) * [g''(t) + (g'(t))^2]
+        e_gt = jnp.exp(g_t)
+        # Compute g'(t)
+        delta_g_user_prime = calculate_delta_g(
+            t=config._t, p=config.p_user, 
+            M=config.M_user, T=config.T, 
+            n=config.n_user, order=1,
+            pulse_time=config.pulse_time, 
+            pulse_amp=config.pulse_amp, 
+            pulse_width=config.pulse_width
+        )
+        delta_g_opt_prime = calculate_delta_g(
+            t=config._t, p=p_opt, 
+            M=config.M_opt, T=config.T, 
+            n=config.n_opt, order=1
+        )
+        g_prime = delta_g_user_prime + delta_g_opt_prime
+        # Compute g''(t)
+        delta_g_user_double_prime = calculate_delta_g(
+            t=config._t, p=config.p_user, 
+            M=config.M_user, T=config.T, 
+            n=config.n_user, order=2,
+            pulse_time=config.pulse_time, 
+            pulse_amp=config.pulse_amp, 
+            pulse_width=config.pulse_width
+        )
+        delta_g_opt_double_prime = calculate_delta_g(
+            t=config._t, p=p_opt, 
+            M=config.M_opt, T=config.T, 
+            n=config.n_opt, order=2
+        )
+        g_double_prime = delta_g_user_double_prime + delta_g_opt_double_prime
+        f_triple_prime = e_gt * (g_double_prime + g_prime ** 2)
+        return f_triple_prime
+    else:
+        raise ValueError("Order higher than 3 is not implemented.")
+
 def schwarzian_derivative(p_opt, config: PerturbationConfig):
-    fp = calculate_f(p_opt, config, 1)
-    fpp = calculate_f(p_opt, config, 2)
-    fppp = calculate_f(p_opt, config, 3)
+    """
+    Computes the Schwarzian derivative S(f, t) for the given f(t).
+
+    Parameters:
+    - p_opt: Optimizer-controlled Fourier coefficients (1D array)
+    - config: PerturbationConfig object containing user and optimizer parameters
+
+    Returns:
+    - S: Schwarzian derivative (1D array)
+    """
+    fp = calculate_f(p_opt, config, order=1)
+    fpp = calculate_f(p_opt, config, order=2)
+    fppp = calculate_f(p_opt, config, order=3)
     S = fppp / fp - 1.5 * (fpp / fp) ** 2
     return S
 
-# Define the Schwarzian action
 def schwarzian_action(p_opt, config: PerturbationConfig):
+    """
+    Computes the Schwarzian action by integrating the Schwarzian derivative.
+
+    Parameters:
+    - p_opt: Optimizer-controlled Fourier coefficients (1D array)
+    - config: PerturbationConfig object containing user and optimizer parameters
+
+    Returns:
+    - action: Schwarzian action (scalar)
+    """
     S = schwarzian_derivative(p_opt, config)
-    action = -config.C * jax.scipy.integrate.trapezoid(S, config.t)
+    action = -config.C * jax.scipy.integrate.trapezoid(S, config._t)
     return action
 
-# Objective function to minimize (only p_opt is optimized)
 def action_to_minimize(p_opt, config: PerturbationConfig):
+    """
+    Objective function to minimize: the Schwarzian action.
+
+    Parameters:
+    - p_opt: Optimizer-controlled Fourier coefficients (1D array)
+    - config: PerturbationConfig object containing user and optimizer parameters
+
+    Returns:
+    - action: Schwarzian action (scalar)
+    """
     return schwarzian_action(p_opt, config)
 
 def run_optimizations(action_to_minimize, p_initial, config):
