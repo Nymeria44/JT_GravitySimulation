@@ -24,12 +24,12 @@ os.environ['XLA_FLAGS'] = '--xla_gpu_triton_gemm_any=True'
 matplotlib.use('TkAgg')
 
 OPTIMIZER_CONFIG = {
-    "BFGS": False,
-    "Adam (JAX)": False,
-    "Adam (Optax)": False,
-    "Yogi": False,
-    "LBFGS": False,
-    "AdaBelief": False,
+    "BFGS": True,
+    "Adam (JAX)": True,
+    "Adam (Optax)": True,
+    "Yogi": True,
+    "LBFGS": True,
+    "AdaBelief": True,
     "Newton's Method": True,
     "Hessian-based Optimization": True 
 }
