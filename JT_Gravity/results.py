@@ -87,8 +87,8 @@ def plot_deviation_from_f(results, config: PerturbationConfig):
 
 def select_best_optimizer(results):
     """
-    Selects the optimizer with the minimum action value from the results and returns
-    a dictionary containing its data.
+    Selects the optimizer with the action value closest to zero from the results 
+    and returns a dictionary containing its data.
 
     Parameters:
     - results (dict): Dictionary containing action values, times taken, f(t) values, and optimized parameters.
@@ -96,13 +96,13 @@ def select_best_optimizer(results):
     Returns:
     - dict: A dictionary `best_result` containing the data of the best optimizer:
       - 'method': Name of the best optimizer method.
-      - 'action_value': Minimum action value achieved.
+      - 'action_value': Action value closest to zero achieved.
       - 'time_taken': Computation time taken by the best optimizer.
       - 'f_t': The f(t) array for the best optimizer.
       - 'optimized_params': The optimized parameters (coefficients) for the best optimizer.
     """
-    # Identify the optimizer with the lowest action value
-    best_method = min(results["action_values"], key=results["action_values"].get)
+    # Identify the optimizer with the action value closest to zero
+    best_method = min(results["action_values"], key=lambda k: abs(results["action_values"][k]))
     best_result = {
         "method": best_method,
         "action_value": results["action_values"][best_method],
@@ -112,6 +112,6 @@ def select_best_optimizer(results):
     }
     
     # Print a simple statement about the selected optimizer
-    print(f"Selected best optimizer: {best_method}")
+    print(f"Selected best optimizer: {best_method}.")
     
     return best_result
