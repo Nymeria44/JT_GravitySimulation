@@ -3,6 +3,32 @@ from schwarzian import (
     schwarzian_derivative
 )
 
+def compute_chiral_components(f_t, config):
+    """
+    Computes U(u) = f(t + z) and V(v) = f(t - z) for the dilaton field calculation.
+
+    Parameters:
+    - f_t (array): Optimized function values f(t) on the time grid.
+    - config (PerturbationConfig): Configuration instance with precomputed coordinate grids.
+
+    Returns:
+    - U (array): Array of U(u) values computed as f(t + z).
+    - V (array): Array of V(v) values computed as f(t - z).
+    """
+    # Interpolating f(t) onto (t + z) and (t - z) locations using JAX
+    u = config.u  # u = t + z
+    v = config.v  # v = t - z
+    
+    # Perform interpolation of f(t) at points u and v
+    # jnp.interp requires flattening and reshaping due to grid shapes
+    U_values = jnp.interp(u.flatten(), config.t, f_t).reshape(u.shape)
+    V_values = jnp.interp(v.flatten(), config.t, f_t).reshape(v.shape)
+
+    return U_values, V_values
+
+####################################################################################################
+# Pervious Functions
+####################################################################################################
 def calculate_energy(p_opt, config):
     """
     Calculate boundary energy using the Schwarzian derivative.
