@@ -27,9 +27,11 @@ nvidia-nvjitlink-cu12==12.6.77
 opt_einsum==3.4.0
 optax==0.2.3
 packaging==24.1
+pandas==2.2.3
 pillow==11.0.0
 pyparsing==3.2.0
 python-dateutil==2.9.0.post0
+pytz==2024.2
 review==1510
 scipy==1.14.1
 setuptools==75.3.0
@@ -37,3 +39,4 @@ six==1.16.0
 sympy==1.13.3
 toolz==1.0.0
 typing_extensions==4.12.2
+tzdata==2024.2
