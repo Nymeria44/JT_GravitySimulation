@@ -24,14 +24,14 @@ os.environ['XLA_FLAGS'] = '--xla_gpu_triton_gemm_any=True'
 matplotlib.use('TkAgg')
 
 OPTIMIZER_CONFIG = {
-    "BFGS": True,
-    "Adam (JAX)": True,
-    "Adam (Optax)": True,
+    "BFGS": False,
+    "Adam (JAX)": False,
+    "Adam (Optax)": False,
     "Yogi": True,
-    "LBFGS": True,
-    "AdaBelief": True,
-    "Newton's Method": True,
-    "Hessian-based Optimization": True 
+    "LBFGS": False,
+    "AdaBelief": False,
+    "Newton's Method": False,
+    "Hessian-based Optimization": False
 }
 
 def main():
@@ -39,12 +39,12 @@ def main():
         # Core parameters
         T=10.0,                   # Total sim time
         Z = 10.0,
-        N=500,                  # Number of time samples
+        N=1000,                  # Number of time samples
         G = 1,  # Gravitational constant in 2D
-        a = 1,  # back reaction stability parameter (postive constant)
+        a = 100,  # back reaction stability parameter (postive constant)
 
         # Fourier perturbation settings
-        perturbation_strength=1, # Magnitude of user Fourier Pertubation
+        perturbation_strength=0.001, # Magnitude of user Fourier Pertubation
         M_user=5,                 # Number of Fourier series harmonics (split 50/50 between user and optimizer)
         M_opt=20,
 
@@ -74,8 +74,8 @@ def main():
 
     # Print results and plot for optimizers
     print_optimization_results(results, verbose=False)
-    plot_f_vs_ft(results, PertConfig)
-    plot_deviation_from_f(results, PertConfig)
+    # plot_f_vs_ft(results, PertConfig)
+    # plot_deviation_from_f(results, PertConfig)
 
     f_t = select_best_optimizer(results)
 

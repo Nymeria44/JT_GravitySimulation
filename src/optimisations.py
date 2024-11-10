@@ -10,29 +10,29 @@ import optax
 
 # Adam
 NUM_STEPS_ADAM = 8000
-STEP_SIZE_ADAM = 0.0005
+STEP_SIZE_ADAM = 0.0001
 
 # Optax Adam
 NUM_STEPS_OPTAX_ADAM = 8000
-STEP_SIZE_OPTAX_ADAM = 0.0005
+STEP_SIZE_OPTAX_ADAM = 0.0001
 
 # Yogi
-NUM_STEPS_YOGI = 1000
-STEP_SIZE_YOGI = 0.0005
+NUM_STEPS_YOGI = 5000
+STEP_SIZE_YOGI = 0.0001
 
 # L-BFGS
-NUM_STEPS_LBFGS = 4000
+NUM_STEPS_LBFGS = 2000
 
 # AdaBelief
-NUM_STEPS_ADABELIEF = 5000
-STEP_SIZE_ADABELIEF = 0.0005
+NUM_STEPS_ADABELIEF = 3000
+STEP_SIZE_ADABELIEF = 0.0001
 
 # Newton's Method
-NUM_STEPS_NEWTON = 40
+NUM_STEPS_NEWTON = 20
 
 # Hessian-Based Optimization
-NUM_STEPS_HESSIAN = 1000
-LEARNING_RATE_HESSIAN = 0.0005
+NUM_STEPS_HESSIAN = 500
+LEARNING_RATE_HESSIAN = 0.0001
 
 ####################################################################################################
 # Optimization Functions
@@ -159,7 +159,7 @@ def run_yogi_optimization(action_to_minimize, p_initial):
     params = p_initial
     for i in range(NUM_STEPS_YOGI):
         opt_state, params = yogi_step(opt_state, params)
-        if i % 1000 == 0:
+        if i % 500 == 0:
             action_value = action_to_minimize(params)
             print(f"Yogi Step {i}, Action Value: {action_value}")
     
