@@ -1,9 +1,35 @@
-# results.py
-
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 
-from config import PerturbationConfig  # Import the configuration class
+from config import PerturbationConfig
+
+# Standard plotting parameters
+PLOT_CONFIG = {
+    'figure.figsize': (12, 8),
+    'font.size': 10,
+    'axes.titlesize': 12,
+    'axes.labelsize': 10,
+    'legend.fontsize': 9,
+    'grid.alpha': 0.3,
+    'lines.linewidth': 2,
+    'lines.markersize': 6
+}
+
+def setup_plot_style():
+    """Set consistent style for all plots."""
+    plt.rcParams.update(PLOT_CONFIG)
+    
+def add_config_info(ax, config):
+    """Add configuration parameters to plot in consistent location."""
+    config_text = (f"T={config.T}, Z={config.Z}\n"
+                  f"N={config.N}\n"
+                  f"Perturbation strength={config.perturbation_strength}")
+    
+    ax.text(0.02, 0.98, config_text,
+            transform=ax.transAxes,
+            verticalalignment='top',
+            fontsize=8,
+            bbox=dict(facecolor='white', alpha=0.8, edgecolor='none'))
 
 def select_best_optimizer(results):
     """
@@ -104,93 +130,107 @@ def print_optimization_results(results, verbose=False):
                 print(f"  {optimized_params}")
             
             print("-"*80)
-def plot_deviation_from_t(results, config: PerturbationConfig):
-    """
-    Plot the deviation of f(t) from linearity for each optimization method using pre-calculated values.
 
-    Parameters:
-    -----------
+def plot_f_vs_ft(results, config: PerturbationConfig):
+    """
+    Plot the boundary reparameterization showing how f(t) modifies the boundary.
+
+    Parameters
+    ----------
     results : dict
         Dictionary containing optimization results including f(t) values
     config : PerturbationConfig
         Configuration instance containing parameters and time grid
     """
-    plt.figure(figsize=(12, 8))
+    setup_plot_style()
+    fig, ax = plt.subplots()
     
-    t = config.t  # Time grid from config
+    t = config.t
     
-    # Plot reference line at zero (no deviation)
-    plt.plot(t, jnp.zeros_like(t), 'k--', label='No deviation', alpha=0.5)
+    # Plot original time coordinate
+    ax.plot(t, t, 'k--', label='Original (t)', alpha=0.5)
+    
+    # Plot f(t) for each optimization method
+    for method, f_t_values in results["f_t"].items():
+        if isinstance(f_t_values, jnp.ndarray) and f_t_values.shape == t.shape:
+            ax.plot(t, f_t_values, label=f'f(t) using {method}')
+    
+    ax.set_xlabel('Original time (t)')
+    ax.set_ylabel('Reparameterised time f(t)')
+    ax.set_title('Time Coordinate Reparameterisation')
+    ax.grid(True, alpha=0.3)
+    ax.legend()
+    
+    add_config_info(ax, config)
+    plt.tight_layout()
+    plt.show()
+
+def plot_deviation_from_t(results, config: PerturbationConfig):
+    """
+    Plot the deviation of f(t) from linearity.
+
+    Parameters
+    ----------
+    results : dict
+        Dictionary containing optimization results including f(t) values
+    config : PerturbationConfig
+        Configuration instance containing parameters and time grid
+    """
+    setup_plot_style()
+    fig, ax = plt.subplots()
+    
+    t = config.t
+    
+    # Plot reference line at zero
+    ax.plot(t, jnp.zeros_like(t), 'k--', label='No deviation', alpha=0.5)
     
     # Plot deviations for each optimization method
     for method, f_t_values in results["f_t"].items():
         if isinstance(f_t_values, jnp.ndarray) and f_t_values.shape == t.shape:
             f_t_minus_t = f_t_values - t
-            plt.plot(t, f_t_minus_t, label=f"Deviation using {method}")
-        else:
-            print(f"Skipping {method} due to incompatible result shape or type.")
+            ax.plot(t, f_t_minus_t, label=f"Deviation using {method}")
 
-    plt.xlabel('Original time (t)')
-    plt.ylabel('Deviation from original time (f(t) - t)')
-    plt.title('Time Coordinate Shift')
-    plt.grid(True, alpha=0.3)
-    plt.legend()
+    ax.set_xlabel('Original time (t)')
+    ax.set_ylabel('Deviation from original time (f(t) - t)')
+    ax.set_title('Time Coordinate Shift')
+    ax.grid(True, alpha=0.3)
+    ax.legend()
     
-    # Add configuration parameters as text
-    config_text = (f"T={config.T}, Z={config.Z}\n"
-                  f"N={config.N}\n"
-                  f"Perturbation strength={config.perturbation_strength}\n")
-    
-    plt.text(0.02, 0.98, config_text, 
-             transform=plt.gca().transAxes,
-             verticalalignment='top',
-             fontsize=8,
-             bbox=dict(facecolor='white', alpha=0.8))
-    
+    add_config_info(ax, config)
+    plt.tight_layout()
     plt.show()
 
 def plot_reparameterization(results, config: PerturbationConfig):
     """
-    Plot the actual shape of the boundary in (t,z) coordinates for different optimization methods.
-    
-    Parameters:
-    -----------
+    Plot the physical boundary in (t,z) coordinates.
+
+    Parameters
+    ----------
     results : dict
         Dictionary containing optimization results including f(t) values
     config : PerturbationConfig
         Configuration instance containing parameters and time grid
-    save_path : str, optional
-        Path to save the plot. If None, display the plot instead
     """
-    plt.figure(figsize=(12, 8))
+    setup_plot_style()
+    fig, ax = plt.subplots()
     
-    t = config.t 
-    z = config.Z * jnp.ones_like(t)  # Constant z for the boundary
+    t = config.t
+    z = config.Z * jnp.ones_like(t)
     
     # Plot original boundary
-    plt.plot(t, z, 'k--', label='Original boundary', alpha=0.5)
+    ax.plot(t, z, 'k--', label='Original boundary', alpha=0.5)
     
     # Plot perturbed boundary for each optimization method
     for method, f_t_values in results["f_t"].items():
         if isinstance(f_t_values, jnp.ndarray) and f_t_values.shape == t.shape:
-            plt.plot(f_t_values, z, label=f'Boundary using {method}')
+            ax.plot(f_t_values, z, label=f'Boundary using {method}')
     
-    plt.xlabel('Original time coordinate (t)')
-    plt.ylabel('Spatial coordinate (z)')
-    plt.title('Physical Movement of Boundary')
-    plt.grid(True, alpha=0.3)
-    plt.legend()
+    ax.set_xlabel('Original time coordinate (t)')
+    ax.set_ylabel('Spatial coordinate (z)')
+    ax.set_title('Physical Movement of Boundary')
+    ax.grid(True, alpha=0.3)
+    ax.legend()
     
-    # Add configuration parameters
-    config_text = (f"T={config.T}, Z={config.Z}\n"
-                  f"N={config.N}\n"
-                  f"Perturbation strength={config.perturbation_strength}\n")
-
-    
-    plt.text(0.02, 0.98, config_text, 
-             transform=plt.gca().transAxes,
-             verticalalignment='top',
-             fontsize=8,
-             bbox=dict(facecolor='white', alpha=0.8))
-    
+    add_config_info(ax, config)
+    plt.tight_layout()
     plt.show()
