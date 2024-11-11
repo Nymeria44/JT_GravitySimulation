@@ -16,18 +16,64 @@ from optimisations import (
 
 from config import PerturbationConfig  # Import the configuration class
 
+
 ################################################################################
-# Fourier Series and Gaussian Pulse Calculations
+# Enforcing Monotonicity Constraints
 ################################################################################
 
-def calculate_delta_g(t, p, M, T, n, order=0, pulse_time=None, pulse_amp=0, pulse_width=0.00):
+def enforce_monotone_constraints(coeffs_sin, coeffs_cos, T, n):
     """
-    Calculate Fourier series terms and Gaussian pulse for g(t).
+    Projects Fourier coefficients to ensure monotonicity: f'(t) > 0
+    
+    Parameters
+    ----------
+    coeffs_sin : jnp.ndarray
+        Sine coefficients
+    coeffs_cos : jnp.ndarray
+        Cosine coefficients
+    T : float
+        Period
+    n : jnp.ndarray
+        Array of harmonic indices
+    
+    Returns
+    -------
+    tuple
+        Projected (coeffs_sin, coeffs_cos)
+    """
+    omega = 2 * jnp.pi / T
+    
+    # Calculate maximum possible derivative contribution
+    max_derivative = 0.0
+    for j, (a_j, b_j) in enumerate(zip(coeffs_cos, coeffs_sin)):
+        omega_j = omega * n[j]
+        max_impact = omega_j * jnp.sqrt(a_j**2 + b_j**2)
+        max_derivative += max_impact
+    
+    scale_factor = jnp.where(
+        max_derivative >= 0.98,
+        0.97 / max_derivative,
+        1.0
+    )
+    
+    # Apply scaling
+    coeffs_sin = coeffs_sin * scale_factor
+    coeffs_cos = coeffs_cos * scale_factor
+    
+    return coeffs_sin, coeffs_cos
 
+################################################################################
+# Core Function Calculations (f(t) and derivatives)
+################################################################################
+
+def calculate_delta_f(t, p, M, T, n, order=0, pulse_time=None, pulse_amp=0, pulse_width=0.00):
+    """
+    Calculate Fourier series perturbation with monotonicity constraints
+    
     Parameters
     ----------
     t : jnp.ndarray
-        Time points for evaluation
+        Time points
     p : jnp.ndarray
         Fourier coefficients (sin and cos combined)
     M : int
@@ -39,195 +85,124 @@ def calculate_delta_g(t, p, M, T, n, order=0, pulse_time=None, pulse_amp=0, puls
     order : int
         Derivative order (0=function, 1=first derivative, etc.)
     pulse_time : float, optional
-        Gaussian pulse center time
+        Center time for Gaussian pulse
     pulse_amp : float, optional
-        Gaussian pulse amplitude
+        Amplitude of Gaussian pulse
     pulse_width : float, optional
-        Gaussian pulse width
-
+        Width of Gaussian pulse
+    
     Returns
     -------
     jnp.ndarray
-        Fourier series perturbation or its derivative
-    """   
-    delta_g = 0.0  # Initialized to zero
+        Perturbation or its derivative
+    """
+    delta_f = 0
 
     if p is not None and p.size > 0:
-        # Separate sine and cosine coefficients
+        # Split coefficients
         sin_coeffs = p[:M]
         cos_coeffs = p[M:]
         
-        # Calculate frequency factor based on derivative order
-        factor = (2 * jnp.pi * n / T) ** order
+        # Project coefficients if calculating f(t) or f'(t)
+        if order <= 1:
+            sin_coeffs, cos_coeffs = enforce_monotone_constraints(sin_coeffs, cos_coeffs, T, n)
         
-        # Calculate sine and cosine terms, adjusting for derivative order
-        if order % 4 == 0:  # No change in sin/cos phase
-            sin_terms = jnp.sin(2 * jnp.pi * n[:, None] * t[None, :] / T)
-            cos_terms = jnp.cos(2 * jnp.pi * n[:, None] * t[None, :] / T)
-        elif order % 4 == 1:  # First derivative
-            sin_terms = jnp.cos(2 * jnp.pi * n[:, None] * t[None, :] / T)
-            cos_terms = -jnp.sin(2 * jnp.pi * n[:, None] * t[None, :] / T)
-        elif order % 4 == 2:  # Second derivative
-            sin_terms = -jnp.sin(2 * jnp.pi * n[:, None] * t[None, :] / T)
-            cos_terms = -jnp.cos(2 * jnp.pi * n[:, None] * t[None, :] / T)
-        else:  # Third derivative
-            sin_terms = -jnp.cos(2 * jnp.pi * n[:, None] * t[None, :] / T)
-            cos_terms = jnp.sin(2 * jnp.pi * n[:, None] * t[None, :] / T)
+        # Calculate frequency factor
+        omega = 2 * jnp.pi / T
+        factor = (omega * n) ** order
+        
+        # Calculate terms based on derivative order
+        if order % 4 == 0:
+            sin_terms = jnp.sin(omega * n[:, None] * t[None, :])
+            cos_terms = jnp.cos(omega * n[:, None] * t[None, :])
+        elif order % 4 == 1:
+            sin_terms = jnp.cos(omega * n[:, None] * t[None, :])
+            cos_terms = -jnp.sin(omega * n[:, None] * t[None, :])
+        elif order % 4 == 2:
+            sin_terms = -jnp.sin(omega * n[:, None] * t[None, :])
+            cos_terms = -jnp.cos(omega * n[:, None] * t[None, :])
+        else:  # order % 4 == 3
+            sin_terms = -jnp.cos(omega * n[:, None] * t[None, :])
+            cos_terms = jnp.sin(omega * n[:, None] * t[None, :])
+        
+        delta_f = jnp.dot(sin_coeffs * factor, sin_terms) + jnp.dot(cos_coeffs * factor, cos_terms)
 
-        # Apply factor for each order to coefficients and calculate delta_g
-        delta_g = jnp.dot(sin_coeffs * factor, sin_terms) + jnp.dot(cos_coeffs * factor, cos_terms)
-    
-    # Optionally add a Gaussian pulse and its derivatives if pulse_time is specified
+    # Add Gaussian pulse if specified
     if pulse_time is not None and pulse_amp != 0 and pulse_width != 0:
-        # Gaussian pulse and its derivatives
         t_diff = t - pulse_time
         gaussian_base = pulse_amp / jnp.sqrt(2 * jnp.pi * pulse_width**2)
         
         if order == 0:
-            # 0th derivative: Gaussian pulse itself
             gaussian_pulse = gaussian_base * jnp.exp(-t_diff**2 / (2 * pulse_width**2))
         elif order == 1:
-            # 1st derivative
             gaussian_pulse = gaussian_base * (-t_diff / pulse_width**2) * jnp.exp(-t_diff**2 / (2 * pulse_width**2))
         elif order == 2:
-            # 2nd derivative
             gaussian_pulse = gaussian_base * ((t_diff**2 - pulse_width**2) / pulse_width**4) * jnp.exp(-t_diff**2 / (2 * pulse_width**2))
         elif order == 3:
-            # 3rd derivative
             gaussian_pulse = gaussian_base * (-t_diff * (t_diff**2 - 3 * pulse_width**2) / pulse_width**6) * jnp.exp(-t_diff**2 / (2 * pulse_width**2))
         else:
-            # Higher derivatives are not implemented here
-            raise ValueError("Higher derivatives are not implemented for the Gaussian pulse")
-
-        # Add the Gaussian pulse or its derivative to delta_g
-        delta_g += gaussian_pulse
-
-    return delta_g
-
-################################################################################
-# Core Function Calculations (f(t) and derivatives)
-################################################################################
+            raise ValueError("Higher derivatives not implemented for Gaussian pulse")
+            
+        delta_f += gaussian_pulse
+    
+    return delta_f
 
 def calculate_f(p_opt, config: PerturbationConfig, order=0):
     """
-    Calculate f(t) and its derivatives using log-dampened approach.
-
+    Calculate f(t) = t + δf(t) and its derivatives
+    
     Parameters
     ----------
     p_opt : jnp.ndarray
-        Optimizer-controlled Fourier coefficients
+        Optimizer-controlled coefficients
     config : PerturbationConfig
-        Configuration containing grid and parameters
-    order : int, default=0
-        Derivative order (0=f, 1=f', 2=f'', 3=f''')
-
+        Configuration parameters
+    order : int
+        Derivative order
+    
     Returns
     -------
     jnp.ndarray
-        Function or derivative values on time grid
-
-    Raises
-    ------
-    ValueError
-        If order > 3
+        Function or derivative values
     """
-    # Compute delta_g_user and delta_g_opt (keep existing code)
-    delta_g_user = calculate_delta_g(
-        t=config._t, p=config.p_user,
-        M=config.M_user, T=config.T,
-        n=config.n_user, order=order,
+    # Calculate perturbations
+    delta_f_user = calculate_delta_f(
+        config._t, config.p_user, 
+        config.M_user, config.T, 
+        config.n_user, order=order,
         pulse_time=config.pulse_time,
         pulse_amp=config.pulse_amp,
         pulse_width=config.pulse_width
     )
-
-    delta_g_opt = calculate_delta_g(
-        t=config._t, p=p_opt,
-        M=config.M_opt, T=config.T,
-        n=config.n_opt, order=order
+    
+    delta_f_opt = calculate_delta_f(
+        config._t, p_opt, 
+        config.M_opt, config.T, 
+        config.n_opt, order=order
     )
+    
+    # Add baseline term (t for f(t), 1 for f'(t), 0 for higher derivatives)
+    baseline = jnp.where(order == 0, 
+                        config._t,
+                        jnp.where(order == 1, 1.0, 0.0))
+    
+    result = baseline + delta_f_user + delta_f_opt
+    
+    def print_warning(min_deriv):
+        jax.debug.print("WARNING: Non-monotonic behavior detected, min f'(t) = {x}", x=min_deriv)
+        return result
 
-    # Total g(t) or its derivatives
-    g_t = delta_g_user + delta_g_opt
-
-    if order == 0:
-        # Use log1p(exp(x)) for numerical stability
-        # This grows more slowly than exp(x) while maintaining monotonicity
-        dampened_exp = jnp.log1p(jnp.exp(g_t))
-        
-        # Compute the integral using cumulative sum
-        integral_dampened = jnp.cumsum(dampened_exp) * config.dt
-        f_t = config._t + integral_dampened
-        return f_t
-        
-    elif order == 1:
-        # First derivative: f'(t) = 1 + exp(g(t))/(1 + exp(g(t)))
-        # This is the derivative of log1p(exp(x))
-        f_prime = 1 + jnp.exp(g_t) / (1 + jnp.exp(g_t))
-        return f_prime
-        
-    elif order == 2:
-        # Second derivative: f''(t) = exp(g(t))*g'(t)/(1 + exp(g(t)))^2
-        e_gt = jnp.exp(g_t)
-        denominator = (1 + e_gt) ** 2
-        
-        # Compute g'(t)
-        delta_g_user_prime = calculate_delta_g(
-            t=config._t, p=config.p_user, 
-            M=config.M_user, T=config.T, 
-            n=config.n_user, order=1,
-            pulse_time=config.pulse_time,
-            pulse_amp=config.pulse_amp,
-            pulse_width=config.pulse_width
+    if order == 1:
+        min_deriv = jnp.min(result)
+        # Use jax.lax.cond instead of if statement
+        result = jax.lax.cond(
+            min_deriv <= 0,
+            lambda x: print_warning(x),
+            lambda x: result,
+            min_deriv
         )
-        
-        delta_g_opt_prime = calculate_delta_g(
-            t=config._t, p=p_opt,
-            M=config.M_opt, T=config.T,
-            n=config.n_opt, order=1
-        )
-        
-        g_prime = delta_g_user_prime + delta_g_opt_prime
-        f_double_prime = (e_gt * g_prime) / denominator
-        return f_double_prime
-        
-    elif order == 3:
-        # Third derivative involves chain rule and product rule
-        e_gt = jnp.exp(g_t)
-        denominator = (1 + e_gt) ** 3
-        
-        # Get g'(t), g''(t), and g'''(t)
-        derivatives = []
-        for derivative_order in range(1, 4):
-            delta_g_user_n = calculate_delta_g(
-                t=config._t, p=config.p_user,
-                M=config.M_user, T=config.T,
-                n=config.n_user, order=derivative_order,
-                pulse_time=config.pulse_time,
-                pulse_amp=config.pulse_amp,
-                pulse_width=config.pulse_width
-            )
-            
-            delta_g_opt_n = calculate_delta_g(
-                t=config._t, p=p_opt,
-                M=config.M_opt, T=config.T,
-                n=config.n_opt, order=derivative_order
-            )
-            
-            derivatives.append(delta_g_user_n + delta_g_opt_n)
-        
-        g_prime, g_double_prime, g_triple_prime = derivatives
-        
-        # Computing f'''(t) using the chain rule
-        term1 = e_gt * g_triple_prime
-        term2 = e_gt * g_prime * g_double_prime
-        term3 = -2 * e_gt * g_prime ** 3
-        
-        f_triple_prime = (term1 + term2 + term3) / denominator
-        return f_triple_prime
-        
-    else:
-        raise ValueError("Order higher than 3 is not implemented.")
+    
+    return result
 
 ################################################################################
 # Schwarzian Action Computation
@@ -252,6 +227,7 @@ def schwarzian_derivative(p_opt, config: PerturbationConfig):
     fp = calculate_f(p_opt, config, order=1)
     fpp = calculate_f(p_opt, config, order=2)
     fppp = calculate_f(p_opt, config, order=3)
+
     S = fppp / fp - 1.5 * (fpp / fp) ** 2
     return S
 
