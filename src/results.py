@@ -90,10 +90,9 @@ def plot_f_vs_ft(results, config: PerturbationConfig):
         if isinstance(f_t_values, jnp.ndarray) and f_t_values.shape == t.shape:
             plt.plot(t, f_t_values, label=f'f(t) using {method}')
     
-    # Customize the plot
-    plt.xlabel('Original time coordinate (t)')
-    plt.ylabel('Reparameterized time coordinate f(t)')
-    plt.title('Boundary Reparameterization for Different Optimization Methods')
+    plt.xlabel('Original time (t)')
+    plt.ylabel('Reparameterised time f(t)')
+    plt.title('Time Coordinate Reparameterisation')
     plt.grid(True, alpha=0.3)
     plt.legend()
     
@@ -136,9 +135,9 @@ def plot_deviation_from_t(results, config: PerturbationConfig):
         else:
             print(f"Skipping {method} due to incompatible result shape or type.")
 
-    plt.xlabel('Original time coordinate (t)')
+    plt.xlabel('Original time (t)')
     plt.ylabel('Deviation from original time (f(t) - t)')
-    plt.title('Deviation of Optimized f(t) from Original Time')
+    plt.title('Time Coordinate Shift')
     plt.grid(True, alpha=0.3)
     plt.legend()
     
@@ -181,9 +180,9 @@ def plot_reparameterization(results, config: PerturbationConfig):
         if isinstance(f_t_values, jnp.ndarray) and f_t_values.shape == t.shape:
             plt.plot(f_t_values, z, label=f'Boundary using {method}')
     
-    plt.xlabel('Time coordinate')
+    plt.xlabel('Original time coordinate (t)')
     plt.ylabel('Spatial coordinate (z)')
-    plt.title('Boundary Shape for Different Optimization Methods')
+    plt.title('Physical Movement of Boundary')
     plt.grid(True, alpha=0.3)
     plt.legend()
     
