@@ -20,10 +20,10 @@ from config import PerturbationConfig  # Import the configuration class
 ################################################################################
 # Enforcing Monotonicity Constraints
 ################################################################################
-
-def enforce_monotone_constraints(coeffs_sin, coeffs_cos, T, n):
+def enforce_monotone_constraints(coeffs_sin, coeffs_cos, T, n, threshold=0.999, scale_target=0.998):
     """
     Projects Fourier coefficients to ensure monotonicity: f'(t) > 0
+    Using vectorized operations for better performance
     
     Parameters
     ----------
@@ -35,32 +35,32 @@ def enforce_monotone_constraints(coeffs_sin, coeffs_cos, T, n):
         Period
     n : jnp.ndarray
         Array of harmonic indices
+    threshold : float, optional
+        Threshold for maximum derivative (default: 0.99)
+    scale_target : float, optional
+        Target scale factor when threshold is exceeded (default: 0.98)
     
     Returns
     -------
     tuple
         Projected (coeffs_sin, coeffs_cos)
     """
-    omega = 2 * jnp.pi / T
+    # Calculate frequency factor
+    omega_n = (2 * jnp.pi / T) * n
     
-    # Calculate maximum possible derivative contribution
-    max_derivative = 0.0
-    for j, (a_j, b_j) in enumerate(zip(coeffs_cos, coeffs_sin)):
-        omega_j = omega * n[j]
-        max_impact = omega_j * jnp.sqrt(a_j**2 + b_j**2)
-        max_derivative += max_impact
+    # Vectorized calculation of maximum derivative contribution
+    amplitudes = jnp.sqrt(coeffs_cos**2 + coeffs_sin**2)
+    max_derivative = jnp.sum(omega_n * amplitudes)
     
+    # Apply scaling with configurable threshold
     scale_factor = jnp.where(
-        max_derivative >= 0.98,
-        0.97 / max_derivative,
+        max_derivative >= threshold,
+        scale_target / max_derivative,
         1.0
     )
     
-    # Apply scaling
-    coeffs_sin = coeffs_sin * scale_factor
-    coeffs_cos = coeffs_cos * scale_factor
-    
-    return coeffs_sin, coeffs_cos
+    # Scale both coefficient arrays at once
+    return coeffs_sin * scale_factor, coeffs_cos * scale_factor
 
 ################################################################################
 # Core Function Calculations (f(t) and derivatives)
@@ -188,10 +188,6 @@ def calculate_f(p_opt, config: PerturbationConfig, order=0):
     
     result = baseline + delta_f_user + delta_f_opt
     
-    def print_warning(min_deriv):
-        jax.debug.print("WARNING: Non-monotonic behavior detected, min f'(t) = {x}", x=min_deriv)
-        return result
-
     if order == 1:
         min_deriv = jnp.min(result)
         jax.lax.cond(

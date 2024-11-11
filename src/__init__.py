@@ -37,7 +37,7 @@ OPTIMIZER_CONFIG = {
     "LBFGS": True,
     "AdaBelief": True,
     "Newton's Method": False,
-    "Hessian-based Optimization": False 
+    "Hessian-based Optimization": False
 }
 
 def main():
@@ -50,7 +50,7 @@ def main():
         a = 100,  # back reaction stability parameter (postive constant)
 
         # Fourier perturbation settings
-        perturbation_strength=0.5, # Magnitude of user Fourier Pertubation
+        perturbation_strength=0.01, # Magnitude of user Fourier Pertubation
         M_user=5,                 # Number of user Fourier series harmonics
         M_opt=20,                 # Number of optimiser Fourier series harmonics
 
@@ -68,7 +68,7 @@ def main():
 
     # Initial guess for optimizer-controlled parameters
     key_opt = jax.random.PRNGKey(0)
-    p_initial = jax.random.normal(key_opt, shape=(2 * PertConfig.M_opt,)) * 0.0001
+    p_initial = jax.random.normal(key_opt, shape=(2 * PertConfig.M_opt,)) * 0.01
 
     # Define the objective function to minimize, with config encapsulating all parameters
     def objective_function(p):
@@ -80,7 +80,7 @@ def main():
         p_initial=p_initial,
         config=OPTIMIZER_CONFIG,
         pert_config=PertConfig,
-        verbose=False
+        verbose=True
     )
 
 ################################################################################
@@ -95,7 +95,7 @@ def main():
 
     print_optimization_results(results, verbose=False)
     plot_f_vs_ft(results, PertConfig)
-    plot_deviation_from_t(results, PertConfig)
+    # plot_deviation_from_t(results, PertConfig)
     plot_boundary(results, PertConfig)
 
 ################################################################################
