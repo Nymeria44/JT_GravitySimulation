@@ -11,10 +11,10 @@ from schwarzian import (
 )
 
 from results import (
+    select_best_optimizer,
     print_optimization_results,
     plot_f_vs_ft,
-    plot_deviation_from_f,
-    select_best_optimizer
+    plot_reparameterization
 )
 
 from config import PerturbationConfig
@@ -24,14 +24,14 @@ os.environ['XLA_FLAGS'] = '--xla_gpu_triton_gemm_any=True'
 matplotlib.use('TkAgg')
 
 OPTIMIZER_CONFIG = {
-    "BFGS": False,
-    "Adam (JAX)": False,
-    "Adam (Optax)": False,
+    "BFGS": True,
+    "Adam (JAX)": True,
+    "Adam (Optax)": True,
     "Yogi": True,
-    "LBFGS": False,
-    "AdaBelief": False,
-    "Newton's Method": False,
-    "Hessian-based Optimization": False
+    "LBFGS": True,
+    "AdaBelief": True,
+    "Newton's Method": True,
+    "Hessian-based Optimization": True 
 }
 
 def main():
@@ -44,7 +44,7 @@ def main():
         a = 100,  # back reaction stability parameter (postive constant)
 
         # Fourier perturbation settings
-        perturbation_strength=0.001, # Magnitude of user Fourier Pertubation
+        perturbation_strength=0.5, # Magnitude of user Fourier Pertubation
         M_user=5,                 # Number of Fourier series harmonics (split 50/50 between user and optimizer)
         M_opt=20,
 
@@ -74,8 +74,9 @@ def main():
 
     # Print results and plot for optimizers
     print_optimization_results(results, verbose=False)
-    # plot_f_vs_ft(results, PertConfig)
+    plot_f_vs_ft(results, PertConfig)
     # plot_deviation_from_f(results, PertConfig)
+    plot_reparameterization(results, PertConfig)
 
     f_t = select_best_optimizer(results)
 
