@@ -110,29 +110,49 @@ def plot_f_vs_ft(results, config: PerturbationConfig):
     
     plt.show()
 
-def plot_deviation_from_f(results, config: PerturbationConfig):
+def plot_deviation_from_t(results, config: PerturbationConfig):
     """
     Plot the deviation of f(t) from linearity for each optimization method using pre-calculated values.
 
     Parameters:
-    - results (dict): Dictionary containing optimized parameters, f(t) values, etc.
-    - config (PerturbationConfig): Configuration instance containing all necessary parameters.
+    -----------
+    results : dict
+        Dictionary containing optimization results including f(t) values
+    config : PerturbationConfig
+        Configuration instance containing parameters and time grid
     """
-
-    t = config.t  # Time grid from config
     plt.figure(figsize=(12, 8))
-
+    
+    t = config.t  # Time grid from config
+    
+    # Plot reference line at zero (no deviation)
+    plt.plot(t, jnp.zeros_like(t), 'k--', label='No deviation', alpha=0.5)
+    
+    # Plot deviations for each optimization method
     for method, f_t_values in results["f_t"].items():
         if isinstance(f_t_values, jnp.ndarray) and f_t_values.shape == t.shape:
             f_t_minus_t = f_t_values - t
-            plt.plot(t, f_t_minus_t, label=f"Deviation (f(t) - t) using {method}")
+            plt.plot(t, f_t_minus_t, label=f"Deviation using {method}")
         else:
             print(f"Skipping {method} due to incompatible result shape or type.")
 
-    plt.xlabel("t")
-    plt.ylabel("f(t) - t")
-    plt.title("Deviation of Optimized f(t) from Linearity for Each Method")
+    plt.xlabel('Original time coordinate (t)')
+    plt.ylabel('Deviation from original time (f(t) - t)')
+    plt.title('Deviation of Optimized f(t) from Original Time')
+    plt.grid(True, alpha=0.3)
     plt.legend()
+    
+    # Add configuration parameters as text
+    config_text = (f"T={config.T}, Z={config.Z}\n"
+                  f"N={config.N}\n"
+                  f"Perturbation strength={config.perturbation_strength}\n")
+    
+    plt.text(0.02, 0.98, config_text, 
+             transform=plt.gca().transAxes,
+             verticalalignment='top',
+             fontsize=8,
+             bbox=dict(facecolor='white', alpha=0.8))
+    
     plt.show()
 
 def plot_reparameterization(results, config: PerturbationConfig):
@@ -150,7 +170,7 @@ def plot_reparameterization(results, config: PerturbationConfig):
     """
     plt.figure(figsize=(12, 8))
     
-    t = config.t  # Use time grid from config
+    t = config.t 
     z = config.Z * jnp.ones_like(t)  # Constant z for the boundary
     
     # Plot original boundary
@@ -161,7 +181,6 @@ def plot_reparameterization(results, config: PerturbationConfig):
         if isinstance(f_t_values, jnp.ndarray) and f_t_values.shape == t.shape:
             plt.plot(f_t_values, z, label=f'Boundary using {method}')
     
-    # Customize the plot
     plt.xlabel('Time coordinate')
     plt.ylabel('Spatial coordinate (z)')
     plt.title('Boundary Shape for Different Optimization Methods')

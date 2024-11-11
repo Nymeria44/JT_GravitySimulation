@@ -14,6 +14,7 @@ from results import (
     select_best_optimizer,
     print_optimization_results,
     plot_f_vs_ft,
+    plot_deviation_from_t,
     plot_reparameterization
 )
 
@@ -75,7 +76,7 @@ def main():
     # Print results and plot for optimizers
     print_optimization_results(results, verbose=False)
     plot_f_vs_ft(results, PertConfig)
-    # plot_deviation_from_f(results, PertConfig)
+    plot_deviation_from_t(results, PertConfig)
     plot_reparameterization(results, PertConfig)
 
     f_t = select_best_optimizer(results)
