@@ -3,7 +3,6 @@
 import jax
 import jax.numpy as jnp
 
-# Custom Imports from `optimisations.py`
 from optimisations import (
     run_bfgs_optimization,
     run_adam_optimization,
@@ -17,24 +16,40 @@ from optimisations import (
 
 from config import PerturbationConfig  # Import the configuration class
 
+################################################################################
+# Fourier Series and Gaussian Pulse Calculations
+################################################################################
+
 def calculate_delta_g(t, p, M, T, n, order=0, pulse_time=None, pulse_amp=0, pulse_width=0.00):
     """
-    Calculate the Fourier series terms / Gaussian pulse and their derivatives for g(t)
+    Calculate Fourier series terms and Gaussian pulse for g(t).
 
-    Parameters:
-    - t: time variable (1D array)
-    - p: Fourier coefficients (sin and cos combined) (1D array)
-    - M: Number of terms in each series (sin and cos)
-    - T: Period
-    - n: Array of harmonic indices (1D array)
-    - order: The derivative order (0 for the function itself, 1 for first derivative, etc.)
-    - pulse_time: Center time for the Gaussian pulse (optional)
-    - pulse_amp: Amplitude of the Gaussian pulse (optional)
-    - pulse_width: Width of the Gaussian pulse (optional, small for delta-like effect)
+    Parameters
+    ----------
+    t : jnp.ndarray
+        Time points for evaluation
+    p : jnp.ndarray
+        Fourier coefficients (sin and cos combined)
+    M : int
+        Number of terms in each series
+    T : float
+        Period
+    n : jnp.ndarray
+        Harmonic indices
+    order : int
+        Derivative order (0=function, 1=first derivative, etc.)
+    pulse_time : float, optional
+        Gaussian pulse center time
+    pulse_amp : float, optional
+        Gaussian pulse amplitude
+    pulse_width : float, optional
+        Gaussian pulse width
 
-    Returns:
-    - delta_g: Fourier series perturbation or its derivative with optional Gaussian pulse (1D array)
-    """
+    Returns
+    -------
+    jnp.ndarray
+        Fourier series perturbation or its derivative
+    """   
     delta_g = 0.0  # Initialized to zero
 
     if p is not None and p.size > 0:
@@ -89,9 +104,32 @@ def calculate_delta_g(t, p, M, T, n, order=0, pulse_time=None, pulse_amp=0, puls
 
     return delta_g
 
+################################################################################
+# Core Function Calculations (f(t) and derivatives)
+################################################################################
+
 def calculate_f(p_opt, config: PerturbationConfig, order=0):
     """
-    Generalized function to calculate f(t) and its derivatives using log-dampened approach.
+    Calculate f(t) and its derivatives using log-dampened approach.
+
+    Parameters
+    ----------
+    p_opt : jnp.ndarray
+        Optimizer-controlled Fourier coefficients
+    config : PerturbationConfig
+        Configuration containing grid and parameters
+    order : int, default=0
+        Derivative order (0=f, 1=f', 2=f'', 3=f''')
+
+    Returns
+    -------
+    jnp.ndarray
+        Function or derivative values on time grid
+
+    Raises
+    ------
+    ValueError
+        If order > 3
     """
     # Compute delta_g_user and delta_g_opt (keep existing code)
     delta_g_user = calculate_delta_g(
@@ -191,16 +229,25 @@ def calculate_f(p_opt, config: PerturbationConfig, order=0):
     else:
         raise ValueError("Order higher than 3 is not implemented.")
 
+################################################################################
+# Schwarzian Action Computation
+################################################################################
+
 def schwarzian_derivative(p_opt, config: PerturbationConfig):
     """
-    Computes the Schwarzian derivative S(f, t) for the given f(t).
+    Compute Schwarzian derivative S(f, t).
 
-    Parameters:
-    - p_opt: Optimizer-controlled Fourier coefficients (1D array)
-    - config: PerturbationConfig object containing user and optimizer parameters
+    Parameters
+    ----------
+    p_opt : jnp.ndarray
+        Optimizer-controlled Fourier coefficients
+    config : PerturbationConfig
+        User and optimizer parameters
 
-    Returns:
-    - S: Schwarzian derivative (1D array)
+    Returns
+    -------
+    jnp.ndarray
+        Schwarzian derivative S(f) = f'''/f' - (3/2)(f''/f')²
     """
     fp = calculate_f(p_opt, config, order=1)
     fpp = calculate_f(p_opt, config, order=2)
@@ -210,14 +257,19 @@ def schwarzian_derivative(p_opt, config: PerturbationConfig):
 
 def schwarzian_action(p_opt, config: PerturbationConfig):
     """
-    Computes the Schwarzian action by integrating the Schwarzian derivative.
+    Compute Schwarzian action via integration.
 
-    Parameters:
-    - p_opt: Optimizer-controlled Fourier coefficients (1D array)
-    - config: PerturbationConfig object containing user and optimizer parameters
+    Parameters
+    ----------
+    p_opt : jnp.ndarray
+        Optimizer-controlled Fourier coefficients
+    config : PerturbationConfig
+        User and optimizer parameters
 
-    Returns:
-    - action: Schwarzian action (scalar)
+    Returns
+    -------
+    float
+        Action value -C∫S(f)dt
     """
     S = schwarzian_derivative(p_opt, config)
     action = -config.C * jax.scipy.integrate.trapezoid(S, config._t)
@@ -225,30 +277,51 @@ def schwarzian_action(p_opt, config: PerturbationConfig):
 
 def action_to_minimize(p_opt, config: PerturbationConfig):
     """
-    Objective function to minimize: the Schwarzian action.
+    Objective function computing Schwarzian action.
 
-    Parameters:
-    - p_opt: Optimizer-controlled Fourier coefficients (1D array)
-    - config: PerturbationConfig object containing user and optimizer parameters
+    Parameters
+    ----------
+    p_opt : jnp.ndarray
+        Optimizer-controlled Fourier coefficients
+    config : PerturbationConfig
+        System configuration parameters
 
-    Returns:
-    - action: Schwarzian action (scalar)
+    Returns
+    -------
+    float
+        Schwarzian action value
+
+    See Also
+    --------
+    schwarzian_action
     """
     return schwarzian_action(p_opt, config)
 
+################################################################################
+# Optimization Functionality
+################################################################################
+
 def run_optimizations(action_to_minimize, p_initial, config):
     """
-    Executes specified optimization methods based on the configuration.
+    Execute optimization methods based on configuration.
 
-    Parameters:
-    - action_to_minimize (function): The function to minimize.
-    - p_initial (array): Initial parameter guess.
-    - config (dict): Configuration dict specifying which optimizers to use.
+    Parameters
+    ----------
+    action_to_minimize : callable
+        Target function for optimization
+    p_initial : jnp.ndarray
+        Initial parameter guess
+    config : dict
+        Optimizer configuration flags
 
-    Returns:
-    - dict: A dictionary with method names as keys and optimized results as values.
+    Returns
+    -------
+    dict
+        Results for each optimizer including:
+        - optimized_params
+        - action_value
+        - time_taken
     """
-
     # Define a list of optimization methods based on the configuration
     optimization_methods = [
         ("BFGS", run_bfgs_optimization, (action_to_minimize, p_initial)) if config["BFGS"] else None,
@@ -282,17 +355,27 @@ def run_optimizations(action_to_minimize, p_initial, config):
 
 def reparameterise_ft(action_to_minimize, p_initial, config, pert_config):
     """
-    Runs optimization to reparameterize f(t) and includes f(t) in the results.
+    Optimize f(t) reparameterization with full results.
 
-    Parameters:
-    - action_to_minimize (function): The function to minimize.
-    - p_initial (array): Initial parameter guess.
-    - config (dict): Configuration dict specifying which optimizers to use.
-    - pert_config (PerturbationConfig): Perturbation configuration for calculating f(t).
+    Parameters
+    ----------
+    action_to_minimize : callable
+        Target function for optimization
+    p_initial : jnp.ndarray
+        Initial parameter guess
+    config : dict
+        Optimizer configuration flags
+    pert_config : PerturbationConfig
+        Parameters for f(t) calculation
 
-    Returns:
-    - dict: A dictionary with method names as keys, containing optimized results,
-      including optimized parameters, action values, times taken, and f(t) values.
+    Returns
+    -------
+    dict
+        Complete optimization results including:
+        - optimized_params
+        - action_value
+        - time_taken
+        - f_t values
     """
     # Run optimizations and get base results
     results = run_optimizations(action_to_minimize, p_initial, config)
