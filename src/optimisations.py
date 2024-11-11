@@ -349,23 +349,3 @@ def run_adabelief_optimization(action_to_minimize, p_initial, verbose=False):
     end_time = time.time()
     action_value_adabelief = action_to_minimize(params)
     return params, action_value_adabelief, end_time - start_time
-
-def print_final_comparison(results):
-    """
-    Print final comparison of all optimization methods.
-
-    Parameters
-    ----------
-    results : dict
-        Dictionary containing optimization results
-    """
-    print("\n" + "="*50)
-    print("Final Action Values and Time Comparison:")
-    print("="*50)
-    
-    for method in results["action_values"].keys():
-        action = results["action_values"][method]
-        time = results["times_taken"][method]
-        print(f"{method:25} | Action: {action:10.6f} | Time: {time:8.4f}s")
-    
-    print("="*50)

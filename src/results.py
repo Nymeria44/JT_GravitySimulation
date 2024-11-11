@@ -44,28 +44,52 @@ def print_optimization_results(results, verbose=False):
     - results (dict): Dictionary containing action values, times taken, f(t) values, and optimized parameters.
     - verbose (bool): Whether to print detailed information including f(t) arrays and coefficients.
     """
+    print("\n" + "="*60)
+    print(f"{'Final Action Values and Time Comparison':^60}")
+    print("="*60)
+    print(f"{'Optimiser':30} | {'Action':12} | {'Time':8}")
+    print("-"*60)
+    
+    # Sort methods by action value (excluding NaN values)
+    methods = sorted(
+        results["action_values"].keys(),
+        key=lambda x: float('inf') if jnp.isnan(results["action_values"][x]) 
+        else results["action_values"][x]
+    )
+    
+    for method in methods:
+        action = results["action_values"][method]
+        time = results["times_taken"][method]
+        print(f"{method:30} | {action:12.6f} | {time:8.4f}s")
+    
+    print("="*60)
 
-    print("\nFinal Action Values and Time Comparison:")
-    for method_name, action_value in results["action_values"].items():
-        print(f"{method_name}: {action_value} | Time Taken: {results['times_taken'][method_name]:.4f} seconds")
-        
-        if verbose:
+    if verbose:
+        print("\nDetailed Results:")
+        print("="*80)
+        for method_name in methods:
+            print(f"\n{method_name}:")
+            print("-"*80)
+            
             # Print f(t) summary
             f_t_values = results["f_t"].get(method_name)
             if f_t_values is not None:
-
-                print(f"\nf(t) for {method_name}:")
+                print("f(t) Summary:")
                 print(f"  First 5 values: {f_t_values[:5]}")
                 print(f"  Last 5 values: {f_t_values[-5:]}")
-                # Print summary statistics for f(t)
-                print(f"  Summary: min={f_t_values.min()}, max={f_t_values.max()}, "
-                      f"mean={f_t_values.mean()}, std={f_t_values.std()}")
+                print("  Statistics:")
+                print(f"    Min: {f_t_values.min():.6f}")
+                print(f"    Max: {f_t_values.max():.6f}")
+                print(f"    Mean: {f_t_values.mean():.6f}")
+                print(f"    Std: {f_t_values.std():.6f}")
 
-            # Print optimised parameters (Fourier coefficients)
+            # Print optimized parameters
             optimized_params = results["optimized_params"].get(method_name)
             if optimized_params is not None:
-                print(f"\nOptimized Parameters for {method_name}:\n{optimized_params}")
-            print("\n" + "-"*50 + "\n")
+                print("\n  Optimized Parameters:")
+                print(f"  {optimized_params}")
+            
+            print("-"*80)
 
 def plot_f_vs_ft(results, config: PerturbationConfig):
     """

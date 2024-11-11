@@ -322,8 +322,8 @@ def run_optimizations(action_to_minimize, p_initial, config, verbose=False):
     dict
         Results for each optimizer including:
         - optimized_params
-        - action_value
-        - time_taken
+        - action_values
+        - times_taken
     """
     optimization_methods = [
         ("BFGS", run_bfgs_optimization, (action_to_minimize, p_initial, verbose)) if config["BFGS"] else None,
@@ -346,15 +346,24 @@ def run_optimizations(action_to_minimize, p_initial, config, verbose=False):
 
     for method_name, optimization_function, args in optimization_methods:
         if verbose:
-            print(f"\nStarting {method_name} optimization...")
+            print(f"\n{'-'*60}")
+            print(f"Running {method_name}")
+            print(f"{'-'*60}")
+        
         p_optimal, action_value, time_taken = optimization_function(*args)
+        
+        # Skip storing NaN results
+        if jnp.isnan(action_value):
+            if verbose:
+                print(f"{method_name} failed to converge.")
+            continue
+            
         results["optimized_params"][method_name] = p_optimal
         results["action_values"][method_name] = action_value
         results["times_taken"][method_name] = time_taken
+        
         if verbose:
-            print(f"{method_name} completed in {time_taken:.4f} seconds with action value {action_value}")
-
-    print_final_comparison(results)
+            print(f"{method_name} completed in {time_taken:.4f}s (Action: {action_value:.6f})")
 
     return results
 
