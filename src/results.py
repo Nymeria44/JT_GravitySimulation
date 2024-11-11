@@ -3,13 +3,19 @@ import matplotlib.pyplot as plt
 
 from config import PerturbationConfig
 
-# Standard plotting parameters
+################################################################################
+# Setting up variables
+################################################################################
+
 PLOT_CONFIG = {
     'figure.figsize': (12, 8),
     'font.size': 10,
     'axes.titlesize': 12,
     'axes.labelsize': 10,
     'legend.fontsize': 9,
+    'legend.framealpha': 0.8,
+    'legend.edgecolor': 'gray',
+    'legend.facecolor': 'white',
     'grid.alpha': 0.3,
     'lines.linewidth': 2,
     'lines.markersize': 6
@@ -18,18 +24,34 @@ PLOT_CONFIG = {
 def setup_plot_style():
     """Set consistent style for all plots."""
     plt.rcParams.update(PLOT_CONFIG)
-    
+
 def add_config_info(ax, config):
-    """Add configuration parameters to plot in consistent location."""
+    """Add configuration parameters to plot in consistent location using legend styling."""
     config_text = (f"T={config.T}, Z={config.Z}\n"
                   f"N={config.N}\n"
                   f"Perturbation strength={config.perturbation_strength}")
     
+    # Get legend properties from rcParams
+    legend_props = {
+        'fontsize': plt.rcParams['legend.fontsize'],
+        'framealpha': plt.rcParams['legend.framealpha'],
+        'edgecolor': plt.rcParams['legend.edgecolor'],
+        'facecolor': plt.rcParams['legend.facecolor']
+    }
+    
     ax.text(0.02, 0.98, config_text,
             transform=ax.transAxes,
             verticalalignment='top',
-            fontsize=8,
-            bbox=dict(facecolor='white', alpha=0.8, edgecolor='none'))
+            fontsize=legend_props['fontsize'],
+            bbox=dict(
+                facecolor=legend_props['facecolor'],
+                alpha=legend_props['framealpha'],
+                edgecolor=legend_props['edgecolor']
+            ))
+
+################################################################################
+# Isolating the Best Optimizer
+################################################################################
 
 def select_best_optimizer(results):
     """
@@ -71,6 +93,10 @@ def select_best_optimizer(results):
     print(f"Selected best optimizer: {best_method}.")
     
     return best_result
+
+################################################################################
+# Displaying Results
+################################################################################
 
 def print_optimization_results(results, verbose=False):
     """

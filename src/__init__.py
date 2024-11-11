@@ -30,14 +30,14 @@ os.environ['XLA_FLAGS'] = '--xla_gpu_triton_gemm_any=True'
 matplotlib.use('TkAgg')
 
 OPTIMIZER_CONFIG = {
-    "BFGS": True,
+    "BFGS": False,
     "Adam (JAX)": True,
     "Adam (Optax)": True,
     "Yogi": True,
     "LBFGS": True,
     "AdaBelief": True,
-    "Newton's Method": True,
-    "Hessian-based Optimization": True 
+    "Newton's Method": False,
+    "Hessian-based Optimization": False 
 }
 
 def main():
@@ -80,7 +80,7 @@ def main():
         p_initial=p_initial,
         config=OPTIMIZER_CONFIG,
         pert_config=PertConfig,
-        verbose=True
+        verbose=False
     )
 
 ################################################################################
