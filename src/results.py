@@ -243,6 +243,7 @@ def plot_deviation_from_t(results, config: PerturbationConfig):
 def plot_boundary(results, config: PerturbationConfig):
     """
     Plot the physical boundary in (t,z) coordinates.
+    The boundary lives at fixed z, and f(t) gives its time reparameterization.
 
     Parameters
     ----------
@@ -255,23 +256,24 @@ def plot_boundary(results, config: PerturbationConfig):
     _, ax = plt.subplots()
     
     t = config.t
-    z = config.Z * jnp.ones_like(t)
+    z0 = 0  # Fixed spatial position of the boundary
     
-    # Plot original boundary
-    ax.plot(t, z,
-            linestyle=REFERENCE_STYLE['linestyle'],
-            color=REFERENCE_STYLE['color'],
-            alpha=REFERENCE_STYLE['alpha'],
-            label='Original boundary')
+    # Plot original boundary - a straight line at z=z0
+    ax.axhline(y=z0,
+               linestyle=REFERENCE_STYLE['linestyle'],
+               color=REFERENCE_STYLE['color'],
+               alpha=REFERENCE_STYLE['alpha'],
+               label='Original boundary')
     
-    # Plot perturbed boundary for each optimization method
+    # Plot reparameterized boundary for each optimization method
     for method, f_t_values in results["f_t"].items():
         if isinstance(f_t_values, jnp.ndarray) and f_t_values.shape == t.shape:
-            ax.plot(f_t_values, z, label=f'Boundary using {method}')
+            # The boundary points move from (t,z0) to (f(t),z0)
+            ax.plot(t, z0 + (f_t_values - t), label=f'Boundary using {method}')
     
-    ax.set_xlabel('Original time coordinate (t)')
+    ax.set_xlabel('Time coordinate (t)')
     ax.set_ylabel('Spatial coordinate (z)')
-    ax.set_title('Physical Movement of Boundary')
+    ax.set_title('Physical Boundary')
     ax.grid(True)
     ax.legend()
     
