@@ -21,6 +21,13 @@ PLOT_CONFIG = {
     'lines.markersize': 6
 }
 
+# Config of reference line for plots
+REFERENCE_STYLE = {
+    'alpha': 0.5,
+    'linestyle': '--',
+    'color': 'k'
+}
+
 def setup_plot_style():
     """Set consistent style for all plots."""
     plt.rcParams.update(PLOT_CONFIG)
@@ -158,23 +165,16 @@ def print_optimization_results(results, verbose=False):
             print("-"*80)
 
 def plot_f_vs_ft(results, config: PerturbationConfig):
-    """
-    Plot the boundary reparameterization showing how f(t) modifies the boundary.
-
-    Parameters
-    ----------
-    results : dict
-        Dictionary containing optimization results including f(t) values
-    config : PerturbationConfig
-        Configuration instance containing parameters and time grid
-    """
     setup_plot_style()
-    fig, ax = plt.subplots()
+    _, ax = plt.subplots()  # Using _ for unused figure object
     
     t = config.t
     
-    # Plot original time coordinate
-    ax.plot(t, t, 'k--', label='Original (t)', alpha=0.5)
+    ax.plot(t, t, 
+            linestyle=REFERENCE_STYLE['linestyle'],
+            color=REFERENCE_STYLE['color'],
+            alpha=REFERENCE_STYLE['alpha'],
+            label='Original (t)')
     
     # Plot f(t) for each optimization method
     for method, f_t_values in results["f_t"].items():
@@ -184,7 +184,7 @@ def plot_f_vs_ft(results, config: PerturbationConfig):
     ax.set_xlabel('Original time (t)')
     ax.set_ylabel('Reparameterised time f(t)')
     ax.set_title('Time Coordinate Reparameterisation')
-    ax.grid(True, alpha=0.3)
+    ax.grid(True)  # No explicit alpha needed
     ax.legend()
     
     add_config_info(ax, config)
@@ -192,23 +192,17 @@ def plot_f_vs_ft(results, config: PerturbationConfig):
     plt.show()
 
 def plot_deviation_from_t(results, config: PerturbationConfig):
-    """
-    Plot the deviation of f(t) from linearity.
-
-    Parameters
-    ----------
-    results : dict
-        Dictionary containing optimization results including f(t) values
-    config : PerturbationConfig
-        Configuration instance containing parameters and time grid
-    """
     setup_plot_style()
-    fig, ax = plt.subplots()
+    _, ax = plt.subplots()
     
     t = config.t
     
     # Plot reference line at zero
-    ax.plot(t, jnp.zeros_like(t), 'k--', label='No deviation', alpha=0.5)
+    ax.plot(t, jnp.zeros_like(t),
+            linestyle=REFERENCE_STYLE['linestyle'],
+            color=REFERENCE_STYLE['color'],
+            alpha=REFERENCE_STYLE['alpha'],
+            label='No deviation')
     
     # Plot deviations for each optimization method
     for method, f_t_values in results["f_t"].items():
@@ -219,7 +213,7 @@ def plot_deviation_from_t(results, config: PerturbationConfig):
     ax.set_xlabel('Original time (t)')
     ax.set_ylabel('Deviation from original time (f(t) - t)')
     ax.set_title('Time Coordinate Shift')
-    ax.grid(True, alpha=0.3)
+    ax.grid(True)
     ax.legend()
     
     add_config_info(ax, config)
@@ -227,24 +221,18 @@ def plot_deviation_from_t(results, config: PerturbationConfig):
     plt.show()
 
 def plot_reparameterization(results, config: PerturbationConfig):
-    """
-    Plot the physical boundary in (t,z) coordinates.
-
-    Parameters
-    ----------
-    results : dict
-        Dictionary containing optimization results including f(t) values
-    config : PerturbationConfig
-        Configuration instance containing parameters and time grid
-    """
     setup_plot_style()
-    fig, ax = plt.subplots()
+    _, ax = plt.subplots()
     
     t = config.t
     z = config.Z * jnp.ones_like(t)
     
     # Plot original boundary
-    ax.plot(t, z, 'k--', label='Original boundary', alpha=0.5)
+    ax.plot(t, z,
+            linestyle=REFERENCE_STYLE['linestyle'],
+            color=REFERENCE_STYLE['color'],
+            alpha=REFERENCE_STYLE['alpha'],
+            label='Original boundary')
     
     # Plot perturbed boundary for each optimization method
     for method, f_t_values in results["f_t"].items():
@@ -254,7 +242,7 @@ def plot_reparameterization(results, config: PerturbationConfig):
     ax.set_xlabel('Original time coordinate (t)')
     ax.set_ylabel('Spatial coordinate (z)')
     ax.set_title('Physical Movement of Boundary')
-    ax.grid(True, alpha=0.3)
+    ax.grid(True)
     ax.legend()
     
     add_config_info(ax, config)
