@@ -165,6 +165,16 @@ def print_optimization_results(results, verbose=False):
             print("-"*80)
 
 def plot_f_vs_ft(results, config: PerturbationConfig):
+    """
+    Plot the boundary reparameterization showing how f(t) modifies the boundary.
+
+    Parameters
+    ----------
+    results : dict
+        Dictionary containing optimization results including f(t) values
+    config : PerturbationConfig
+        Configuration instance containing parameters and time grid
+    """
     setup_plot_style()
     _, ax = plt.subplots()  # Using _ for unused figure object
     
@@ -192,6 +202,16 @@ def plot_f_vs_ft(results, config: PerturbationConfig):
     plt.show()
 
 def plot_deviation_from_t(results, config: PerturbationConfig):
+    """
+    Plot the deviation of f(t) from linearity.
+
+    Parameters
+    ----------
+    results : dict
+        Dictionary containing optimization results including f(t) values
+    config : PerturbationConfig
+        Configuration instance containing parameters and time grid
+    """
     setup_plot_style()
     _, ax = plt.subplots()
     
@@ -220,7 +240,17 @@ def plot_deviation_from_t(results, config: PerturbationConfig):
     plt.tight_layout()
     plt.show()
 
-def plot_reparameterization(results, config: PerturbationConfig):
+def plot_boundary(results, config: PerturbationConfig):
+    """
+    Plot the physical boundary in (t,z) coordinates.
+
+    Parameters
+    ----------
+    results : dict
+        Dictionary containing optimization results including f(t) values
+    config : PerturbationConfig
+        Configuration instance containing parameters and time grid
+    """
     setup_plot_style()
     _, ax = plt.subplots()
     

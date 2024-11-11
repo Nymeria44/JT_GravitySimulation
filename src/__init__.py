@@ -15,7 +15,7 @@ from results import (
     print_optimization_results,
     plot_f_vs_ft,
     plot_deviation_from_t,
-    plot_reparameterization
+    plot_boundary
 )
 
 from harmonic_sweep import harmonic_sweep
@@ -96,7 +96,7 @@ def main():
     print_optimization_results(results, verbose=False)
     plot_f_vs_ft(results, PertConfig)
     plot_deviation_from_t(results, PertConfig)
-    plot_reparameterization(results, PertConfig)
+    plot_boundary(results, PertConfig)
 
 ################################################################################
 # Main Function
