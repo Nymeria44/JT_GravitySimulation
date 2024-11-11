@@ -194,12 +194,11 @@ def calculate_f(p_opt, config: PerturbationConfig, order=0):
 
     if order == 1:
         min_deriv = jnp.min(result)
-        # Use jax.lax.cond instead of if statement
-        result = jax.lax.cond(
+        jax.lax.cond(
             min_deriv <= 0,
-            lambda x: print_warning(x),
-            lambda x: result,
-            min_deriv
+            lambda _: jax.debug.print("WARNING: Non-monotonic behavior detected, min f'(t) = {x}", x=min_deriv),
+            lambda _: None,
+            None
         )
     
     return result
