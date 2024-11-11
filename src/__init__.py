@@ -79,7 +79,8 @@ def main():
         action_to_minimize=objective_function,
         p_initial=p_initial,
         config=OPTIMIZER_CONFIG,
-        pert_config=PertConfig
+        pert_config=PertConfig,
+        verbose=True
     )
 
 ################################################################################

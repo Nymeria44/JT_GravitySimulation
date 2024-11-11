@@ -12,6 +12,7 @@ from optimisations import (
     run_yogi_optimization,
     run_lbfgs_optimization,
     run_adabelief_optimization,
+    print_final_comparison
 )
 
 from config import PerturbationConfig  # Import the configuration class
@@ -301,7 +302,7 @@ def action_to_minimize(p_opt, config: PerturbationConfig):
 # Optimization Functionality
 ################################################################################
 
-def run_optimizations(action_to_minimize, p_initial, config):
+def run_optimizations(action_to_minimize, p_initial, config, verbose=False):
     """
     Execute optimization methods based on configuration.
 
@@ -313,6 +314,8 @@ def run_optimizations(action_to_minimize, p_initial, config):
         Initial parameter guess
     config : dict
         Optimizer configuration flags
+    verbose : bool, default=False
+        Whether to print optimization progress
 
     Returns
     -------
@@ -322,38 +325,40 @@ def run_optimizations(action_to_minimize, p_initial, config):
         - action_value
         - time_taken
     """
-    # Define a list of optimization methods based on the configuration
     optimization_methods = [
-        ("BFGS", run_bfgs_optimization, (action_to_minimize, p_initial)) if config["BFGS"] else None,
-        ("Adam (JAX)", run_adam_optimization, (action_to_minimize, p_initial)) if config["Adam (JAX)"] else None,
-        ("Adam (Optax)", run_optax_adam_optimization, (action_to_minimize, p_initial)) if config["Adam (Optax)"] else None,
-        ("Yogi", run_yogi_optimization, (action_to_minimize, p_initial)) if config["Yogi"] else None,
-        ("LBFGS", run_lbfgs_optimization, (action_to_minimize, p_initial)) if config["LBFGS"] else None,
-        ("AdaBelief", run_adabelief_optimization, (action_to_minimize, p_initial)) if config["AdaBelief"] else None,
-        ("Newton's Method", run_newtons_method, (action_to_minimize, p_initial)) if config["Newton's Method"] else None,
-        ("Hessian-based Optimization", run_hessian_optimization, (action_to_minimize, p_initial)) if config["Hessian-based Optimization"] else None
+        ("BFGS", run_bfgs_optimization, (action_to_minimize, p_initial, verbose)) if config["BFGS"] else None,
+        ("Adam (JAX)", run_adam_optimization, (action_to_minimize, p_initial, verbose)) if config["Adam (JAX)"] else None,
+        ("Adam (Optax)", run_optax_adam_optimization, (action_to_minimize, p_initial, verbose)) if config["Adam (Optax)"] else None,
+        ("Yogi", run_yogi_optimization, (action_to_minimize, p_initial, verbose)) if config["Yogi"] else None,
+        ("LBFGS", run_lbfgs_optimization, (action_to_minimize, p_initial, verbose)) if config["LBFGS"] else None,
+        ("AdaBelief", run_adabelief_optimization, (action_to_minimize, p_initial, verbose)) if config["AdaBelief"] else None,
+        ("Newton's Method", run_newtons_method, (action_to_minimize, p_initial, verbose)) if config["Newton's Method"] else None,
+        ("Hessian-based Optimization", run_hessian_optimization, (action_to_minimize, p_initial, verbose)) if config["Hessian-based Optimization"] else None
     ]
 
-    # Filter out None values (disabled methods)
     optimization_methods = [method for method in optimization_methods if method is not None]
 
-    # Initialize dictionaries to store results
     results = {
         "optimized_params": {},
         "action_values": {},
         "times_taken": {}
     }
 
-    # Run each optimization method and collect results
     for method_name, optimization_function, args in optimization_methods:
+        if verbose:
+            print(f"\nStarting {method_name} optimization...")
         p_optimal, action_value, time_taken = optimization_function(*args)
         results["optimized_params"][method_name] = p_optimal
         results["action_values"][method_name] = action_value
         results["times_taken"][method_name] = time_taken
+        if verbose:
+            print(f"{method_name} completed in {time_taken:.4f} seconds with action value {action_value}")
+
+    print_final_comparison(results)
 
     return results
 
-def reparameterise_ft(action_to_minimize, p_initial, config, pert_config):
+def reparameterise_ft(action_to_minimize, p_initial, config, pert_config, verbose=False):
     """
     Optimize f(t) reparameterization with full results.
 
@@ -367,6 +372,8 @@ def reparameterise_ft(action_to_minimize, p_initial, config, pert_config):
         Optimizer configuration flags
     pert_config : PerturbationConfig
         Parameters for f(t) calculation
+    verbose : bool, default=False
+        Whether to print optimization progress
 
     Returns
     -------
@@ -377,13 +384,23 @@ def reparameterise_ft(action_to_minimize, p_initial, config, pert_config):
         - time_taken
         - f_t values
     """
-    # Run optimizations and get base results
-    results = run_optimizations(action_to_minimize, p_initial, config)
+    if verbose:
+        print("\nStarting reparametrization optimization...")
+    
+    # Run optimizations and get base results with verbose parameter
+    results = run_optimizations(action_to_minimize, p_initial, config, verbose=verbose)
 
     # Calculate f(t) for each optimizer's result and add to results
     results["f_t"] = {}
     for method_name, p_optimal in results["optimized_params"].items():
+        if verbose:
+            print(f"\nCalculating f(t) for {method_name}...")
         f_t_values = calculate_f(p_optimal, pert_config, order=0)
-        results["f_t"][method_name] = f_t_values  # Store f(t) values for each optimizer
+        results["f_t"][method_name] = f_t_values
+        if verbose:
+            print(f"f(t) calculation completed for {method_name}")
+
+    if verbose:
+        print("\nReparametrization optimization completed.")
 
     return results

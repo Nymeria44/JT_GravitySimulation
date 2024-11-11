@@ -87,7 +87,8 @@ def harmonic_sweep():
             results = run_optimizations(
                 action_to_minimize=objective_function,
                 p_initial=p_initial,
-                config=OPTIMIZER_CONFIG
+                config=OPTIMIZER_CONFIG,
+                verbose=False
             )
 
             # Record results
