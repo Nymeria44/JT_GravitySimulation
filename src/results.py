@@ -7,21 +7,32 @@ from config import PerturbationConfig  # Import the configuration class
 
 def select_best_optimizer(results):
     """
-    Selects the optimizer with the action value closest to zero from the results 
-    and returns a dictionary containing its data.
+    Selects the optimizer with the action value closest to zero from the results.
 
-    Parameters:
-    - results (dict): Dictionary containing action values, times taken, f(t) values, and optimized parameters.
+    Parameters
+    ----------
+    results : dict
+        Dictionary containing optimization results including:
+        - action_values
+        - times_taken
+        - f_t
+        - optimized_params
 
-    Returns:
-    - dict: A dictionary `best_result` containing the data of the best optimizer:
-      - 'method': Name of the best optimizer method.
-      - 'action_value': Action value closest to zero achieved.
-      - 'time_taken': Computation time taken by the best optimizer.
-      - 'f_t': The f(t) array for the best optimizer.
-      - 'optimized_params': The optimized parameters (coefficients) for the best optimizer.
+    Returns
+    -------
+    dict
+        Best optimizer results containing:
+        - method : str
+            Name of the best optimizer method
+        - action_value : float
+            Action value closest to zero achieved
+        - time_taken : float
+            Computation time taken by the best optimizer
+        - f_t : ndarray
+            The f(t) array for the best optimizer
+        - optimized_params : ndarray
+            The optimized parameters for the best optimizer
     """
-    # Identify the optimizer with the action value closest to zero
     best_method = min(results["action_values"], key=lambda k: abs(results["action_values"][k]))
     best_result = {
         "method": best_method,
@@ -31,18 +42,24 @@ def select_best_optimizer(results):
         "optimized_params": results["optimized_params"][best_method]
     }
     
-    # Print a simple statement about the selected optimizer
     print(f"Selected best optimizer: {best_method}.")
     
     return best_result
 
 def print_optimization_results(results, verbose=False):
     """
-    Print the final action values, computation time, and optionally detailed values for each optimization method.
+    Print optimization results summary and optionally detailed information.
 
-    Parameters:
-    - results (dict): Dictionary containing action values, times taken, f(t) values, and optimized parameters.
-    - verbose (bool): Whether to print detailed information including f(t) arrays and coefficients.
+    Parameters
+    ----------
+    results : dict
+        Dictionary containing optimization results including:
+        - action_values
+        - times_taken
+        - f_t
+        - optimized_params
+    verbose : bool, default=False
+        Whether to print detailed information including f(t) arrays and coefficients
     """
     print("\n" + "="*60)
     print(f"{'Final Action Values and Time Comparison':^60}")
@@ -50,7 +67,6 @@ def print_optimization_results(results, verbose=False):
     print(f"{'Optimizer':30} | {'Action':12} | {'Time':8}")
     print("-"*60)
     
-    # Sort methods by action value (excluding NaN values)
     methods = sorted(
         results["action_values"].keys(),
         key=lambda x: float('inf') if jnp.isnan(results["action_values"][x]) 
@@ -71,7 +87,6 @@ def print_optimization_results(results, verbose=False):
             print(f"\n{method_name}:")
             print("-"*80)
             
-            # Print f(t) summary
             f_t_values = results["f_t"].get(method_name)
             if f_t_values is not None:
                 print("f(t) Summary:")
@@ -83,56 +98,12 @@ def print_optimization_results(results, verbose=False):
                 print(f"    Mean: {f_t_values.mean():.6f}")
                 print(f"    Std: {f_t_values.std():.6f}")
 
-            # Print optimized parameters
             optimized_params = results["optimized_params"].get(method_name)
             if optimized_params is not None:
                 print("\n  Optimized Parameters:")
                 print(f"  {optimized_params}")
             
             print("-"*80)
-
-def plot_f_vs_ft(results, config: PerturbationConfig):
-    """
-    Plot the boundary reparameterization showing how f(t) modifies the boundary.
-    
-    Parameters:
-    -----------
-    results : dict
-        Dictionary containing optimization results including f(t) values
-    config : PerturbationConfig
-        Configuration instance containing parameters and time grid
-    """
-    plt.figure(figsize=(12, 8))
-    
-    t = config.t  # Use time grid from config
-    
-    # Plot original time coordinate
-    plt.plot(t, t, 'k--', label='Original (t)', alpha=0.5)
-    
-    # Plot f(t) for each optimization method
-    for method, f_t_values in results["f_t"].items():
-        if isinstance(f_t_values, jnp.ndarray) and f_t_values.shape == t.shape:
-            plt.plot(t, f_t_values, label=f'f(t) using {method}')
-    
-    plt.xlabel('Original time (t)')
-    plt.ylabel('Reparameterised time f(t)')
-    plt.title('Time Coordinate Reparameterisation')
-    plt.grid(True, alpha=0.3)
-    plt.legend()
-    
-    # Add configuration parameters as text
-    config_text = (f"T={config.T}, Z={config.Z}\n"
-                  f"N={config.N}\n"
-                  f"Perturbation strength={config.perturbation_strength}\n")
-    
-    plt.text(0.02, 0.98, config_text, 
-             transform=plt.gca().transAxes,
-             verticalalignment='top',
-             fontsize=8,
-             bbox=dict(facecolor='white', alpha=0.8))
-    
-    plt.show()
-
 def plot_deviation_from_t(results, config: PerturbationConfig):
     """
     Plot the deviation of f(t) from linearity for each optimization method using pre-calculated values.
