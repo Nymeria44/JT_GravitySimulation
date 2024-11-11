@@ -3,7 +3,7 @@
 import jax
 import matplotlib
 import os
-import sys  # To check command-line arguments
+import sys
 
 from schwarzian import (
     action_to_minimize,
@@ -18,8 +18,13 @@ from results import (
     plot_reparameterization
 )
 
+from harmonic_sweep import harmonic_sweep
+
 from config import PerturbationConfig
-from harmonic_sweep import harmonic_sweep  # Import the sweep function
+
+################################################################################
+# Setting up variables
+################################################################################
 
 os.environ['XLA_FLAGS'] = '--xla_gpu_triton_gemm_any=True'
 matplotlib.use('TkAgg')
@@ -46,8 +51,8 @@ def main():
 
         # Fourier perturbation settings
         perturbation_strength=0.5, # Magnitude of user Fourier Pertubation
-        M_user=5,                 # Number of Fourier series harmonics (split 50/50 between user and optimizer)
-        M_opt=20,
+        M_user=5,                 # Number of user Fourier series harmonics
+        M_opt=20,                 # Number of optimiser Fourier series harmonics
 
         # Gaussian pulse settings
         pulse_time=0,             # Center of Gaussian pulse
@@ -56,6 +61,10 @@ def main():
     )
     PertConfig.validate_pulse_width()
     PertConfig.debug_info()
+
+################################################################################
+# Boundary Calculations
+################################################################################
 
     # Initial guess for optimizer-controlled parameters
     key_opt = jax.random.PRNGKey(0)
@@ -73,13 +82,24 @@ def main():
         pert_config=PertConfig
     )
 
-    # Print results and plot for optimizers
+################################################################################
+# Bulk Calculations
+################################################################################
+
+    f_t = select_best_optimizer(results)
+
+################################################################################
+# Plotting and Results
+################################################################################
+
     print_optimization_results(results, verbose=False)
     plot_f_vs_ft(results, PertConfig)
     plot_deviation_from_t(results, PertConfig)
     plot_reparameterization(results, PertConfig)
 
-    f_t = select_best_optimizer(results)
+################################################################################
+# Main Function
+################################################################################
 
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "sweep":
