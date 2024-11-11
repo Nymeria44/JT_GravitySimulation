@@ -303,7 +303,7 @@ def run_lbfgs_optimization(action_to_minimize, p_initial, verbose=False):
 
     for i in range(NUM_STEPS_LBFGS):
         opt_state, params, value = lbfgs_step(opt_state, params)
-        if verbose and i % 100 == 0:
+        if verbose and i % 500 == 0:
             print(f"LBFGS Step {i}, Action Value: {value}")
 
     end_time = time.time()

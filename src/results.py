@@ -47,7 +47,7 @@ def print_optimization_results(results, verbose=False):
     print("\n" + "="*60)
     print(f"{'Final Action Values and Time Comparison':^60}")
     print("="*60)
-    print(f"{'Optimiser':30} | {'Action':12} | {'Time':8}")
+    print(f"{'Optimizer':30} | {'Action':12} | {'Time':8}")
     print("-"*60)
     
     # Sort methods by action value (excluding NaN values)

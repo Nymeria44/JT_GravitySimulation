@@ -12,7 +12,6 @@ from optimisations import (
     run_yogi_optimization,
     run_lbfgs_optimization,
     run_adabelief_optimization,
-    print_final_comparison
 )
 
 from config import PerturbationConfig  # Import the configuration class
@@ -401,13 +400,23 @@ def reparameterise_ft(action_to_minimize, p_initial, config, pert_config, verbos
 
     # Calculate f(t) for each optimizer's result and add to results
     results["f_t"] = {}
-    for method_name, p_optimal in results["optimized_params"].items():
+    if verbose:
+        print("\n" + "-"*60)
+        print("Calculating f(t) for all optimizers...")
+        print("-"*60)
+        
+    try:
+        for method_name, p_optimal in results["optimized_params"].items():
+            f_t_values = calculate_f(p_optimal, pert_config, order=0)
+            results["f_t"][method_name] = f_t_values
+            
         if verbose:
-            print(f"\nCalculating f(t) for {method_name}...")
-        f_t_values = calculate_f(p_optimal, pert_config, order=0)
-        results["f_t"][method_name] = f_t_values
+            print("All f(t) calculations completed successfully")
+            print("-"*60)
+    except Exception as e:
         if verbose:
-            print(f"f(t) calculation completed for {method_name}")
+            print(f"Error during f(t) calculations: {str(e)}")
+            print("-"*60)
 
     if verbose:
         print("\nReparametrization optimization completed.")
