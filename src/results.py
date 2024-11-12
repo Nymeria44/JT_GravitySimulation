@@ -135,7 +135,7 @@ def print_optimization_results(results, verbose=False):
     for method in methods:
         action = results["action_values"][method]
         time = results["times_taken"][method]
-        print(f"{method:30} | {action:12.6f} | {time:8.4f}s")
+        print(f"{method:30} | {action:12.2e} | {time:8.4f}s")
     
     print("="*60)
 

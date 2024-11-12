@@ -33,8 +33,8 @@ OPTIMIZER_CONFIG = {
     "BFGS": False,
     "Adam (JAX)": True,
     "Adam (Optax)": True,
-    "Yogi": True,
-    "LBFGS": True,
+    "Yogi": False,
+    "LBFGS": False,
     "AdaBelief": True,
     "Newton's Method": False,
     "Hessian-based Optimization": False
@@ -43,15 +43,15 @@ OPTIMIZER_CONFIG = {
 def main():
     PertConfig = PerturbationConfig(
         # Core parameters
-        T=10.0,                   # Total sim time
+        T=100.0,                   # Total sim time
         Z = 10.0,
-        N=1000,                  # Number of time samples
+        N=15000,                  # Number of time samples
         G = 1,  # Gravitational constant in 2D
-        a = 100,  # back reaction stability parameter (postive constant)
+        a = 10,  # back reaction stability parameter (postive constant)
 
         # Fourier perturbation settings
-        perturbation_strength=0.01, # Magnitude of user Fourier Pertubation
-        M_user=5,                 # Number of user Fourier series harmonics
+        perturbation_strength=0.8, # Magnitude of user Fourier Pertubation
+        M_user=8,                 # Number of user Fourier series harmonics
         M_opt=20,                 # Number of optimiser Fourier series harmonics
 
         # Gaussian pulse settings
