@@ -241,9 +241,9 @@ def plot_boundary(results, config: PerturbationConfig):
 # Bulk Results
 ################################################################################
 
-def plot_dilaton_field(ft_config : FtOptimalConfig, pert_config : PerturbationConfig):
+def plot_dilaton_field(ft_config: FtOptimalConfig, pert_config: PerturbationConfig):
     """
-    Plot the dilaton field Φ(t,z) in the bulk spacetime.
+    Plot the dilaton field Φ(u,v) in light cone coordinates.
 
     Parameters
     ----------
@@ -255,25 +255,29 @@ def plot_dilaton_field(ft_config : FtOptimalConfig, pert_config : PerturbationCo
     setup_plot_style()
     fig, ax = plt.subplots()
     
-    # Get the dilaton field from ft_config
+    # Get the dilaton field and use existing meshgrid from pert_config
     dilaton = ft_config.dilaton
     
-    # Create contour plot using pert_config's coordinate grids directly
-    contour = ax.contourf(pert_config.t, pert_config.z, dilaton, 
+    # Create contour plot using the existing u,v grids
+    contour = ax.contourf(pert_config._u, pert_config._v, dilaton, 
                          levels=20, cmap='viridis')
-    fig.colorbar(contour, ax=ax, label='Dilaton field Φ(t,z)')
+    fig.colorbar(contour, ax=ax, label='Dilaton field Φ(u,v)')
     
-    # Plot the AdS boundary (following the style of other boundary plots)
-    ax.axhline(y=0,
-               linestyle=REFERENCE_STYLE['linestyle'],
-               color=REFERENCE_STYLE['color'],
-               alpha=REFERENCE_STYLE['alpha'],
-               label='AdS boundary')
+    # Plot the AdS boundary (u=v line)
+    u_vals = jnp.linspace(pert_config.t[0], pert_config.t[-1], 100)
+    ax.plot(u_vals, u_vals,
+            linestyle=REFERENCE_STYLE['linestyle'],
+            color=REFERENCE_STYLE['color'],
+            alpha=REFERENCE_STYLE['alpha'],
+            label='AdS boundary (u=v)')
     
-    ax.set_xlabel('Time coordinate (t)')
-    ax.set_ylabel('Spatial coordinate (z)')
-    ax.set_title('Dilaton Field Configuration')
-    ax.grid(True)  # Consistent with other plotting functions
+    # Set equal aspect ratio for light cone coordinates
+    ax.set_aspect('equal')
+    
+    ax.set_xlabel('Light cone coordinate (u = t + z)')
+    ax.set_ylabel('Light cone coordinate (v = t - z)')
+    ax.set_title('Dilaton Field in Light Cone Coordinates')
+    ax.grid(True)
     ax.legend()
     
     add_config_info(ax, pert_config)

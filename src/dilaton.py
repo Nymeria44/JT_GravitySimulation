@@ -70,10 +70,10 @@ def calculate_mu(E, config: PerturbationConfig):
 
 def calculate_dilaton_field(f_u, f_v, E, config: PerturbationConfig):
     """
-    Compute dilaton field Φ(t,z) with reparameterized boundary.
+    Compute dilaton field Φ(u,v) with reparameterized boundary.
     
     The dilaton field in JT gravity takes the form:
-    Φ(t,z) = a - μ[f(t+z)·f(t-z)]/[f(t+z)-f(t-z)]
+    Φ(u,v) = a - μ[f(u)·f(v)]/[f(u)-f(v)]
     
     Parameters
     ----------

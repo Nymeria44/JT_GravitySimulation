@@ -48,14 +48,14 @@ OPTIMIZER_CONFIG = {
 def main():
     PertConfig = PerturbationConfig(
         # Core parameters
-        T=100.0,                   # Total sim time
-        Z = 100.0,
-        N=10000,                  # Number of time samples
+        T=10.0,                   # Total sim time
+        Z = 10.0,
+        N=8000,                  # Number of time samples
         G = 1,  # Gravitational constant in 2D
         a = 10,  # back reaction stability parameter (postive constant)
 
         # Fourier perturbation settings
-        perturbation_strength=0.1, # Magnitude of user Fourier Pertubation
+        perturbation_strength=0.001, # Magnitude of user Fourier Pertubation
         M_user=5,                 # Number of user Fourier series harmonics
         M_opt=20,                 # Number of optimiser Fourier series harmonics
 
