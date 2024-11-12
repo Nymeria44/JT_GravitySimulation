@@ -102,7 +102,7 @@ def select_best_optimizer(results):
     return best_result
 
 ################################################################################
-# Displaying Results
+# Boundary Results
 ################################################################################
 
 def print_optimization_results(results, verbose=False):

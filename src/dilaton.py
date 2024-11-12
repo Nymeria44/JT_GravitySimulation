@@ -45,6 +45,57 @@ def calculate_energy(p_opt, config):
 
     return -config.C * schwarzian
 
+def calculate_mu(E, config):
+    """
+    Calculate μ parameter from the energy E.
+    
+    In JT gravity, μ is proportional to the total energy (mass) in spacetime
+    according to the relation μ = 8πGₙE, where Gₙ is Newton's constant.
+    
+    Parameters
+    ----------
+    E : jnp.ndarray
+        Energy of the system
+    config : PerturbationConfig
+        System configuration containing Newton's constant G_N
+        
+    Returns
+    -------
+    jnp.ndarray
+        μ parameter value(s)
+    """
+    return 8 * jnp.pi * config.G_N * E
+
+def calculate_dilaton_field(f_u, f_v, E, config):
+    """
+    Compute dilaton field Φ(t,z) with reparameterized boundary.
+    
+    The dilaton field in JT gravity takes the form:
+    Φ(t,z) = a - μ[f(t+z)·f(t-z)]/[f(t+z)-f(t-z)]
+    
+    Parameters
+    ----------
+    f_u : jnp.ndarray
+        f(t+z) values
+    f_v : jnp.ndarray
+        f(t-z) values
+    E : jnp.ndarray
+        Boundary energy
+    config : PerturbationConfig
+        System configuration
+        
+    Returns
+    -------
+    jnp.ndarray
+        Dilaton field Φ(t,z)
+    """
+    mu = calculate_mu(E, config)
+    
+    numerator = f_u * f_v
+    denominator = f_u - f_v + 1e-10  # Small epsilon for numerical stability
+
+    return config.a - mu * numerator / denominator
+
 def calculate_beta(E_t, config):
     """
     Compute inverse temperature from boundary energy.
@@ -62,48 +113,3 @@ def calculate_beta(E_t, config):
         Inverse temperature β(t)
     """
     return jnp.pi / jnp.sqrt(config.kappa * E_t)
-
-def calculate_X_plus_minus(f_t, beta):
-    """
-    Compute X± coordinate from reparameterization.
-
-    Parameters
-    ----------
-    f_t : jnp.ndarray
-        Reparameterization function
-    beta : jnp.ndarray
-        Inverse temperature
-
-    Returns
-    -------
-    jnp.ndarray
-        X± coordinate values
-    """
-    return jnp.tan(jnp.pi * f_t / beta)
-
-def calculate_dilaton_field(f_u, f_v, E, config):
-    """
-    Compute dilaton field Φ²(u,v) with reparameterized boundary.
-
-    Parameters
-    ----------
-    f_u, f_v : jnp.ndarray
-        Boundary reparameterization functions
-    E : jnp.ndarray
-        Boundary energy
-    config : PerturbationConfig
-        System configuration
-
-    Returns
-    -------
-    jnp.ndarray
-        Dilaton field Φ²(u,v)
-    """
-    beta = calculate_beta(E, config)
-    X_plus = calculate_X_plus_minus(f_u, beta)
-    X_minus = calculate_X_plus_minus(f_v, beta)
-
-    numerator = 1 - config.kappa * E * X_plus * X_minus
-    denominator = X_plus - X_minus + 1e-10
-
-    return 1 + config.a * numerator / denominator
