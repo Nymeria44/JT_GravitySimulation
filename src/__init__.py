@@ -50,7 +50,7 @@ def main():
         a = 10,  # back reaction stability parameter (postive constant)
 
         # Fourier perturbation settings
-        perturbation_strength=0.8, # Magnitude of user Fourier Pertubation
+        perturbation_strength=0.1, # Magnitude of user Fourier Pertubation
         M_user=8,                 # Number of user Fourier series harmonics
         M_opt=20,                 # Number of optimiser Fourier series harmonics
 
@@ -68,7 +68,7 @@ def main():
 
     # Initial guess for optimizer-controlled parameters
     key_opt = jax.random.PRNGKey(0)
-    p_initial = jax.random.normal(key_opt, shape=(2 * PertConfig.M_opt,)) * 0.01
+    p_initial = jax.random.normal(key_opt, shape=(2 * PertConfig.M_opt,))
 
     # Define the objective function to minimize, with config encapsulating all parameters
     def objective_function(p):
@@ -80,7 +80,7 @@ def main():
         p_initial=p_initial,
         config=OPTIMIZER_CONFIG,
         pert_config=PertConfig,
-        verbose=True
+        verbose=False
     )
 
 ################################################################################

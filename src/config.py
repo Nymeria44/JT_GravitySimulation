@@ -3,6 +3,10 @@
 import jax.numpy as jnp
 import jax
 
+################################################################################
+# Main class
+################################################################################
+
 class PerturbationConfig:
     def __init__(self, T, Z, N, G, a, perturbation_strength, M_user, M_opt, 
                  pulse_time, pulse_amp, pulse_width):
@@ -34,15 +38,21 @@ class PerturbationConfig:
         pulse_width : float
             Width of Gaussian pulse
         """
-        # Primary parameters
+        # Coordinate system parameters
         self.T = T
         self.Z = Z
         self.N = N
+        
+        # Physical parameters
         self.G = G
         self.a = a
+
+        # Fourier series parameters
         self.perturbation_strength = perturbation_strength
         self.M_user = M_user
         self.M_opt = M_opt
+
+        # Gaussian pulse parameters
         self.pulse_time = pulse_time
         self.pulse_amp = pulse_amp
         self.pulse_width = pulse_width
@@ -59,6 +69,59 @@ class PerturbationConfig:
         # Generate random user perturbation parameters
         key = jax.random.PRNGKey(1)
         self._p_user = jax.random.normal(key, shape=(2 * M_user,)) * 0.01 * self.perturbation_strength
+
+################################################################################
+# Coordinate Methods
+################################################################################
+
+    def setup_coordinates(self):
+        """
+        Initialize coordinate grids and lightcone coordinates.
+        """
+        # Setup basic coordinate grids
+        self._t = jnp.linspace(0.001, self.T, self.N)
+        self._z = jnp.linspace(0, self.Z, self.N)
+
+        # Create meshgrids for lightcone coordinates
+        T_grid, Z_grid = jnp.meshgrid(self._t, self._z, indexing="ij")
+        self._u = T_grid + Z_grid
+        self._v = T_grid - Z_grid
+
+    def to_bulk_coordinates(self, u, v):
+        """
+        Convert lightcone to bulk coordinates.
+
+        Parameters
+        ----------
+        u, v : jnp.ndarray
+            Lightcone coordinates
+
+        Returns
+        -------
+        tuple
+            Bulk coordinates (t, z)
+        """
+        return (u + v) / 2, (u - v) / 2
+
+    def to_lightcone_coordinates(self, t, z):
+        """
+        Convert bulk to lightcone coordinates.
+
+        Parameters
+        ----------
+        t, z : jnp.ndarray
+            Bulk coordinates
+
+        Returns
+        -------
+        tuple
+            Lightcone coordinates (u, v)
+        """
+        return t + z, t - z
+
+################################################################################
+# Validation and Setup Methods
+################################################################################
 
     def validate_pulse_width(self):
         """
@@ -114,48 +177,9 @@ class PerturbationConfig:
 
         return jnp.array(n_user), jnp.array(n_opt)
 
-    def setup_coordinates(self):
-        """
-        Initialize coordinate grids and lightcone coordinates.
-        """
-        self._t = jnp.linspace(0.001, self.T, self.N)
-        self._z = jnp.linspace(0, self.Z, self.N)
-
-        T_grid, Z_grid = jnp.meshgrid(self._t, self._z, indexing="ij")
-        self._u = T_grid + Z_grid
-        self._v = T_grid - Z_grid
-
-    def to_bulk_coordinates(self, u, v):
-        """
-        Convert lightcone to bulk coordinates.
-
-        Parameters
-        ----------
-        u, v : jnp.ndarray
-            Lightcone coordinates
-
-        Returns
-        -------
-        tuple
-            Bulk coordinates (t, z)
-        """
-        return (u + v) / 2, (u - v) / 2
-
-    def to_lightcone_coordinates(self, t, z):
-        """
-        Convert bulk to lightcone coordinates.
-
-        Parameters
-        ----------
-        t, z : jnp.ndarray
-            Bulk coordinates
-
-        Returns
-        -------
-        tuple
-            Lightcone coordinates (u, v)
-        """
-        return t + z, t - z
+################################################################################
+# Debug Methods
+################################################################################
 
     def debug_info(self):
         """
@@ -172,7 +196,10 @@ class PerturbationConfig:
         print(f"  p_user = {self._p_user}")
         print(f"  Grid shapes: t={self._t.shape}, z={self._z.shape}, u={self._u.shape}, v={self._v.shape}")
 
-    # Properties with concise docstrings
+################################################################################
+# Properties
+################################################################################
+
     @property
     def t(self):
         """Time coordinate array."""

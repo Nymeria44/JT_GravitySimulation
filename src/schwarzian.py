@@ -241,7 +241,7 @@ def action_to_minimize(p_opt, config: PerturbationConfig):
     Returns
     -------
     float
-        Action value -C∫S(f)dt
+        Action value -C ∫ S(f)dt
     """
     S = schwarzian_derivative(p_opt, config)
     return -config.C * jax.scipy.integrate.trapezoid(S, config._t)
