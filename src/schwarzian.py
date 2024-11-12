@@ -226,29 +226,10 @@ def schwarzian_derivative(p_opt, config: PerturbationConfig):
     S = fppp / fp - 1.5 * (fpp / fp) ** 2
     return S
 
-def schwarzian_action(p_opt, config: PerturbationConfig):
-    """
-    Compute Schwarzian action via integration.
-
-    Parameters
-    ----------
-    p_opt : jnp.ndarray
-        Optimizer-controlled Fourier coefficients
-    config : PerturbationConfig
-        User and optimizer parameters
-
-    Returns
-    -------
-    float
-        Action value -C∫S(f)dt
-    """
-    S = schwarzian_derivative(p_opt, config)
-    action = -config.C * jax.scipy.integrate.trapezoid(S, config._t)
-    return action
-
 def action_to_minimize(p_opt, config: PerturbationConfig):
     """
-    Objective function computing Schwarzian action.
+    Compute Schwarzian action via integration.
+    This is the objective function for optimization.
 
     Parameters
     ----------
@@ -260,13 +241,10 @@ def action_to_minimize(p_opt, config: PerturbationConfig):
     Returns
     -------
     float
-        Schwarzian action value
-
-    See Also
-    --------
-    schwarzian_action
+        Action value -C∫S(f)dt
     """
-    return schwarzian_action(p_opt, config)
+    S = schwarzian_derivative(p_opt, config)
+    return -config.C * jax.scipy.integrate.trapezoid(S, config._t)
 
 ################################################################################
 # Optimization Functionality
