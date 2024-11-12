@@ -2,6 +2,7 @@ import jax.numpy as jnp
 import matplotlib.pyplot as plt
 
 from config import PerturbationConfig
+from ft_config import FtOptimalConfig
 
 ################################################################################
 # Setting up variables
@@ -55,51 +56,6 @@ def add_config_info(ax, config):
                 alpha=legend_props['framealpha'],
                 edgecolor=legend_props['edgecolor']
             ))
-
-################################################################################
-# Isolating the Best Optimizer
-################################################################################
-
-def select_best_optimizer(results):
-    """
-    Selects the optimizer with the action value closest to zero from the results.
-
-    Parameters
-    ----------
-    results : dict
-        Dictionary containing optimization results including:
-        - action_values
-        - times_taken
-        - f_t
-        - optimized_params
-
-    Returns
-    -------
-    dict
-        Best optimizer results containing:
-        - method : str
-            Name of the best optimizer method
-        - action_value : float
-            Action value closest to zero achieved
-        - time_taken : float
-            Computation time taken by the best optimizer
-        - f_t : ndarray
-            The f(t) array for the best optimizer
-        - optimized_params : ndarray
-            The optimized parameters for the best optimizer
-    """
-    best_method = min(results["action_values"], key=lambda k: abs(results["action_values"][k]))
-    best_result = {
-        "method": best_method,
-        "action_value": results["action_values"][best_method],
-        "time_taken": results["times_taken"][best_method],
-        "f_t": results["f_t"][best_method],
-        "optimized_params": results["optimized_params"][best_method]
-    }
-    
-    print(f"Selected best optimizer: {best_method}.")
-    
-    return best_result
 
 ################################################################################
 # Boundary Results
@@ -278,5 +234,48 @@ def plot_boundary(results, config: PerturbationConfig):
     ax.legend()
     
     add_config_info(ax, config)
+    plt.tight_layout()
+    plt.show()
+
+################################################################################
+# Bulk Results
+################################################################################
+
+def plot_dilaton_field(ft_config : FtOptimalConfig, pert_config : PerturbationConfig):
+    """
+    Plot the dilaton field Φ(t,z) in the bulk spacetime.
+
+    Parameters
+    ----------
+    ft_config : FtConfig
+        Configuration instance containing optimized f(t) and derived fields
+    pert_config : PerturbationConfig
+        Configuration instance containing coordinate grids and parameters
+    """
+    setup_plot_style()
+    fig, ax = plt.subplots()
+    
+    # Get the dilaton field from ft_config
+    dilaton = ft_config.dilaton
+    
+    # Create contour plot using pert_config's coordinate grids directly
+    contour = ax.contourf(pert_config.t, pert_config.z, dilaton, 
+                         levels=20, cmap='viridis')
+    fig.colorbar(contour, ax=ax, label='Dilaton field Φ(t,z)')
+    
+    # Plot the AdS boundary (following the style of other boundary plots)
+    ax.axhline(y=0,
+               linestyle=REFERENCE_STYLE['linestyle'],
+               color=REFERENCE_STYLE['color'],
+               alpha=REFERENCE_STYLE['alpha'],
+               label='AdS boundary')
+    
+    ax.set_xlabel('Time coordinate (t)')
+    ax.set_ylabel('Spatial coordinate (z)')
+    ax.set_title('Dilaton Field Configuration')
+    ax.grid(True)  # Consistent with other plotting functions
+    ax.legend()
+    
+    add_config_info(ax, pert_config)
     plt.tight_layout()
     plt.show()

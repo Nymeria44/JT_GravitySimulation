@@ -11,16 +11,17 @@ from schwarzian import (
 )
 
 from results import (
-    select_best_optimizer,
     print_optimization_results,
     plot_f_vs_ft,
     plot_deviation_from_t,
-    plot_boundary
+    plot_boundary,
+    plot_dilaton_field
 )
 
 from harmonic_sweep import harmonic_sweep
 
 from config import PerturbationConfig
+from ft_config import FtOptimalConfig
 
 ################################################################################
 # Setting up variables
@@ -44,14 +45,14 @@ def main():
     PertConfig = PerturbationConfig(
         # Core parameters
         T=100.0,                   # Total sim time
-        Z = 10.0,
-        N=15000,                  # Number of time samples
+        Z = 100.0,
+        N=13000,                  # Number of time samples
         G = 1,  # Gravitational constant in 2D
         a = 10,  # back reaction stability parameter (postive constant)
 
         # Fourier perturbation settings
         perturbation_strength=0.1, # Magnitude of user Fourier Pertubation
-        M_user=8,                 # Number of user Fourier series harmonics
+        M_user=5,                 # Number of user Fourier series harmonics
         M_opt=20,                 # Number of optimiser Fourier series harmonics
 
         # Gaussian pulse settings
@@ -87,16 +88,17 @@ def main():
 # Bulk Calculations
 ################################################################################
 
-    f_t = select_best_optimizer(results)
+    FtConfig = FtOptimalConfig(results, PertConfig)
 
 ################################################################################
 # Plotting and Results
 ################################################################################
 
     print_optimization_results(results, verbose=False)
-    plot_f_vs_ft(results, PertConfig)
+    # plot_f_vs_ft(results, PertConfig)
     # plot_deviation_from_t(results, PertConfig)
     plot_boundary(results, PertConfig)
+    plot_dilaton_field(FtConfig , PertConfig)
 
 ################################################################################
 # Main Function
