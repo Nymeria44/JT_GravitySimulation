@@ -1,6 +1,8 @@
 import jax.numpy as jnp
 from schwarzian import schwarzian_derivative
 
+from config import PerturbationConfig
+
 def compute_chiral_components(f_t, config):
     """
     Compute chiral components U(u) and V(v) from f(t).
@@ -25,7 +27,7 @@ def compute_chiral_components(f_t, config):
 
     return U_values, V_values
 
-def calculate_energy(p_opt, config):
+def calculate_energy(p_opt, config: PerturbationConfig):
     """
     Compute boundary energy from Schwarzian derivative.
 
@@ -45,7 +47,7 @@ def calculate_energy(p_opt, config):
 
     return -config.C * schwarzian
 
-def calculate_mu(E, config):
+def calculate_mu(E, config: PerturbationConfig):
     """
     Calculate μ parameter from the energy E.
     
@@ -64,9 +66,9 @@ def calculate_mu(E, config):
     jnp.ndarray
         μ parameter value(s)
     """
-    return 8 * jnp.pi * config.G_N * E
+    return 8 * jnp.pi * config.G * E
 
-def calculate_dilaton_field(f_u, f_v, E, config):
+def calculate_dilaton_field(f_u, f_v, E, config: PerturbationConfig):
     """
     Compute dilaton field Φ(t,z) with reparameterized boundary.
     
@@ -96,7 +98,7 @@ def calculate_dilaton_field(f_u, f_v, E, config):
 
     return config.a - mu * numerator / denominator
 
-def calculate_beta(E_t, config):
+def calculate_beta(E_t, config: PerturbationConfig):
     """
     Compute inverse temperature from boundary energy.
 

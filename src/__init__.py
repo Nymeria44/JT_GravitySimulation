@@ -1,9 +1,9 @@
 # __init__.py
+import os
+import sys
 
 import jax
 import matplotlib
-import os
-import sys
 
 from schwarzian import (
     action_to_minimize,
@@ -22,6 +22,10 @@ from harmonic_sweep import harmonic_sweep
 
 from config import PerturbationConfig
 from ft_config import FtOptimalConfig
+
+os.environ['XLA_FLAGS'] = '--xla_gpu_triton_gemm_any=True'
+os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
+os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION'] = '0.9'
 
 ################################################################################
 # Setting up variables
@@ -46,7 +50,7 @@ def main():
         # Core parameters
         T=100.0,                   # Total sim time
         Z = 100.0,
-        N=13000,                  # Number of time samples
+        N=10000,                  # Number of time samples
         G = 1,  # Gravitational constant in 2D
         a = 10,  # back reaction stability parameter (postive constant)
 
