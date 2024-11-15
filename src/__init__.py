@@ -31,38 +31,37 @@ os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION'] = '0.9'
 # Setting up variables
 ################################################################################
 
-os.environ['XLA_FLAGS'] = '--xla_gpu_triton_gemm_any=True'
 matplotlib.use('TkAgg')
 
 OPTIMIZER_CONFIG = {
     "BFGS": False,
-    "Adam (JAX)": True,
+    "Adam (JAX)": False,
     "Adam (Optax)": True,
-    "Yogi": False,
+    "Yogi": True,
     "LBFGS": False,
     "AdaBelief": True,
     "Newton's Method": False,
-    "Hessian-based Optimization": False
+    "Hessian-based Optimization": False 
 }
 
 def main():
     PertConfig = PerturbationConfig(
         # Core parameters
-        T=10.0,                   # Total sim time
-        Z = 10.0,
-        N=8000,                  # Number of time samples
-        G = 1,  # Gravitational constant in 2D
-        a = 10,  # back reaction stability parameter (postive constant)
+        T=100.0,                   # Total simulation time
+        Z=100.0,                   # Total simulation space
+        N=10000,                   # Number of spacetime samples
+        G=1,                       # Gravitational constant in 2D
+        a=0.1,                     # Stability parameter for back-reaction
 
         # Fourier perturbation settings
-        perturbation_strength=0.001, # Magnitude of user Fourier Pertubation
-        M_user=5,                 # Number of user Fourier series harmonics
-        M_opt=20,                 # Number of optimiser Fourier series harmonics
+        perturbation_strength=1,   # Perturbation magnitude
+        M_user=5,                  # User defined Fourier harmonics
+        M_opt=20,                  # Optimizer defined Fourier harmonics
 
         # Gaussian pulse settings
-        pulse_time=0,             # Center of Gaussian pulse
-        pulse_amp=0,              # Amplitude of Gaussian pulse
-        pulse_width=0             # Width of Gaussian pulse
+        pulse_time=0,              # Pulse center
+        pulse_amp=0,               # Pulse amplitude
+        pulse_width=0              # Pulse width
     )
     PertConfig.validate_pulse_width()
     PertConfig.debug_info()

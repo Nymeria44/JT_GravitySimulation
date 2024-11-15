@@ -1,18 +1,36 @@
+import matplotlib
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 
 from config import PerturbationConfig
 from ft_config import FtOptimalConfig
 
+matplotlib.use("pgf")
+matplotlib.rcParams.update({
+    "pgf.texsystem": "pdflatex",
+    "pgf.preamble": r"""
+        \usepackage[utf8x]{inputenc}
+        \usepackage{amsmath}
+        \usepackage{amsfonts}
+        \usepackage{amssymb}
+        \usepackage{siunitx}
+    """,
+    'font.family': 'serif',
+    'text.usetex': True,
+    'pgf.rcfonts': False,
+    'figure.dpi': 100,
+    'savefig.dpi': 100,
+})
+
 ################################################################################
 # Setting up variables
 ################################################################################
 
 PLOT_CONFIG = {
-    'figure.figsize': (12, 8),
-    'font.size': 10,
+    'figure.figsize': (6, 4),
+    'font.size': 11,
     'axes.titlesize': 12,
-    'axes.labelsize': 10,
+    'axes.labelsize': 11,
     'legend.fontsize': 9,
     'legend.framealpha': 0.8,
     'legend.edgecolor': 'gray',
@@ -120,7 +138,7 @@ def print_optimization_results(results, verbose=False):
             
             print("-"*80)
 
-def plot_f_vs_ft(results, config: PerturbationConfig):
+def plot_f_vs_ft(results, config: PerturbationConfig, filename="f_vs_ft"):
     """
     Plot the boundary reparameterization showing how f(t) modifies the boundary.
 
@@ -132,7 +150,7 @@ def plot_f_vs_ft(results, config: PerturbationConfig):
         Configuration instance containing parameters and time grid
     """
     setup_plot_style()
-    _, ax = plt.subplots()  # Using _ for unused figure object
+    _, ax = plt.subplots()
     
     t = config.t
     
@@ -150,14 +168,14 @@ def plot_f_vs_ft(results, config: PerturbationConfig):
     ax.set_xlabel('Original time (t)')
     ax.set_ylabel('Reparameterised time f(t)')
     ax.set_title('Time Coordinate Reparameterisation')
-    ax.grid(True)  # No explicit alpha needed
+    ax.grid(True)
     ax.legend()
     
     add_config_info(ax, config)
     plt.tight_layout()
     plt.show()
 
-def plot_deviation_from_t(results, config: PerturbationConfig):
+def plot_deviation_from_t(results, config: PerturbationConfig, filename="deviation_from_t"):
     """
     Plot the deviation of f(t) from linearity.
 
@@ -194,9 +212,12 @@ def plot_deviation_from_t(results, config: PerturbationConfig):
     
     add_config_info(ax, config)
     plt.tight_layout()
-    plt.show()
+    # plt.show()
 
-def plot_boundary(results, config: PerturbationConfig):
+    plt.savefig(f"{filename}.pgf", bbox_inches='tight', pad_inches=0.1)
+    plt.close()
+
+def plot_boundary(results, config: PerturbationConfig, filename="boundary"):
     """
     Plot the physical boundary in (t,z) coordinates.
     The boundary lives at fixed z, and f(t) gives its time reparameterization.
@@ -235,13 +256,16 @@ def plot_boundary(results, config: PerturbationConfig):
     
     add_config_info(ax, config)
     plt.tight_layout()
-    plt.show()
+    # plt.show()
+
+    plt.savefig(f"{filename}.pgf", bbox_inches='tight', pad_inches=0.1)
+    plt.close()
 
 ################################################################################
 # Bulk Results
 ################################################################################
 
-def plot_dilaton_field(ft_config: FtOptimalConfig, pert_config: PerturbationConfig):
+def plot_dilaton_field(ft_config: FtOptimalConfig, pert_config: PerturbationConfig, filename="dilaton_field"):
     """
     Plot the dilaton field Φ(u,v) in light cone coordinates.
 
@@ -261,7 +285,7 @@ def plot_dilaton_field(ft_config: FtOptimalConfig, pert_config: PerturbationConf
     # Create contour plot using the existing u,v grids
     contour = ax.contourf(pert_config._u, pert_config._v, dilaton, 
                          levels=20, cmap='viridis')
-    fig.colorbar(contour, ax=ax, label='Dilaton field Φ(u,v)')
+    fig.colorbar(contour, ax=ax, label=r'Dilaton field $\Phi(u,v)$')
     
     # Plot the AdS boundary (u=v line)
     u_vals = jnp.linspace(pert_config.t[0], pert_config.t[-1], 100)
@@ -282,4 +306,7 @@ def plot_dilaton_field(ft_config: FtOptimalConfig, pert_config: PerturbationConf
     
     add_config_info(ax, pert_config)
     plt.tight_layout()
-    plt.show()
+    # plt.show()
+
+    plt.savefig(f"{filename}.pgf", bbox_inches='tight', pad_inches=0.1)
+    plt.close()
