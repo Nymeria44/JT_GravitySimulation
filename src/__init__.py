@@ -49,7 +49,7 @@ def main():
         # Core parameters
         T=100.0,                   # Total simulation time
         Z=100.0,                   # Total simulation space
-        N=10000,                   # Number of spacetime samples
+        N=4000,                   # Number of spacetime samples
         G=1,                       # Gravitational constant in 2D
         a=0.1,                     # Stability parameter for back-reaction
 
@@ -64,7 +64,7 @@ def main():
         pulse_width=0              # Pulse width
     )
     PertConfig.validate_pulse_width()
-    PertConfig.debug_info()
+    # PertConfig.debug_info()
 
 ################################################################################
 # Boundary Calculations

@@ -1,6 +1,7 @@
 import matplotlib
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
+from scipy.ndimage import zoom
 
 from config import PerturbationConfig
 from ft_config import FtOptimalConfig
@@ -18,8 +19,6 @@ matplotlib.rcParams.update({
     'font.family': 'serif',
     'text.usetex': True,
     'pgf.rcfonts': False,
-    'figure.dpi': 100,
-    'savefig.dpi': 100,
 })
 
 ################################################################################
@@ -138,6 +137,30 @@ def print_optimization_results(results, verbose=False):
             
             print("-"*80)
 
+def downsample_array(arr, target_size=200):
+    """
+    Downsample a 1D or 2D array to approximately target_size points.
+    
+    Parameters
+    ----------
+    arr : array_like
+        Input array (1D or 2D)
+    target_size : int, optional
+        Target number of points (default: 200)
+        
+    Returns
+    -------
+    array_like
+        Downsampled array
+    """
+    arr = jnp.array(arr)  # Convert JAX arrays to numpy if needed
+    if arr.ndim == 1:
+        step = max(len(arr) // target_size, 1)
+        return arr[::step]
+    else:
+        scale = target_size / max(arr.shape)
+        return zoom(arr, (scale, scale))
+
 def plot_f_vs_ft(results, config: PerturbationConfig, filename="f_vs_ft"):
     """
     Plot the boundary reparameterization showing how f(t) modifies the boundary.
@@ -148,11 +171,14 @@ def plot_f_vs_ft(results, config: PerturbationConfig, filename="f_vs_ft"):
         Dictionary containing optimization results including f(t) values
     config : PerturbationConfig
         Configuration instance containing parameters and time grid
+    filename : str, optional
+        Output filename (default: "f_vs_ft")
     """
     setup_plot_style()
     _, ax = plt.subplots()
     
-    t = config.t
+    # Downsample the time array
+    t = downsample_array(config.t)
     
     ax.plot(t, t, 
             linestyle=REFERENCE_STYLE['linestyle'],
@@ -160,10 +186,10 @@ def plot_f_vs_ft(results, config: PerturbationConfig, filename="f_vs_ft"):
             alpha=REFERENCE_STYLE['alpha'],
             label='Original (t)')
     
-    # Plot f(t) for each optimization method
     for method, f_t_values in results["f_t"].items():
-        if isinstance(f_t_values, jnp.ndarray) and f_t_values.shape == t.shape:
-            ax.plot(t, f_t_values, label=f'f(t) using {method}')
+        if isinstance(f_t_values, jnp.ndarray) and f_t_values.shape == config.t.shape:
+            f_t_downsampled = downsample_array(f_t_values)
+            ax.plot(t, f_t_downsampled, label=f'f(t) using {method}')
     
     ax.set_xlabel('Original time (t)')
     ax.set_ylabel('Reparameterised time f(t)')
@@ -173,7 +199,8 @@ def plot_f_vs_ft(results, config: PerturbationConfig, filename="f_vs_ft"):
     
     add_config_info(ax, config)
     plt.tight_layout()
-    plt.show()
+    plt.savefig(f"{filename}.pgf", bbox_inches='tight', pad_inches=0.1)
+    plt.close()
 
 def plot_deviation_from_t(results, config: PerturbationConfig, filename="deviation_from_t"):
     """
@@ -185,23 +212,25 @@ def plot_deviation_from_t(results, config: PerturbationConfig, filename="deviati
         Dictionary containing optimization results including f(t) values
     config : PerturbationConfig
         Configuration instance containing parameters and time grid
+    filename : str, optional
+        Output filename (default: "deviation_from_t")
     """
     setup_plot_style()
     _, ax = plt.subplots()
     
-    t = config.t
+    # Downsample the time array
+    t = downsample_array(config.t)
     
-    # Plot reference line at zero
     ax.plot(t, jnp.zeros_like(t),
             linestyle=REFERENCE_STYLE['linestyle'],
             color=REFERENCE_STYLE['color'],
             alpha=REFERENCE_STYLE['alpha'],
             label='No deviation')
     
-    # Plot deviations for each optimization method
     for method, f_t_values in results["f_t"].items():
-        if isinstance(f_t_values, jnp.ndarray) and f_t_values.shape == t.shape:
-            f_t_minus_t = f_t_values - t
+        if isinstance(f_t_values, jnp.ndarray) and f_t_values.shape == config.t.shape:
+            f_t_downsampled = downsample_array(f_t_values)
+            f_t_minus_t = f_t_downsampled - t
             ax.plot(t, f_t_minus_t, label=f"Deviation using {method}")
 
     ax.set_xlabel('Original time (t)')
@@ -212,8 +241,6 @@ def plot_deviation_from_t(results, config: PerturbationConfig, filename="deviati
     
     add_config_info(ax, config)
     plt.tight_layout()
-    # plt.show()
-
     plt.savefig(f"{filename}.pgf", bbox_inches='tight', pad_inches=0.1)
     plt.close()
 
@@ -228,25 +255,26 @@ def plot_boundary(results, config: PerturbationConfig, filename="boundary"):
         Dictionary containing optimization results including f(t) values
     config : PerturbationConfig
         Configuration instance containing parameters and time grid
+    filename : str, optional
+        Output filename (default: "boundary")
     """
     setup_plot_style()
     _, ax = plt.subplots()
     
-    t = config.t
+    # Downsample the time array
+    t = downsample_array(config.t)
     z0 = 0  # Fixed spatial position of the boundary
     
-    # Plot original boundary - a straight line at z=z0
     ax.axhline(y=z0,
                linestyle=REFERENCE_STYLE['linestyle'],
                color=REFERENCE_STYLE['color'],
                alpha=REFERENCE_STYLE['alpha'],
                label='Original boundary')
     
-    # Plot reparameterized boundary for each optimization method
     for method, f_t_values in results["f_t"].items():
-        if isinstance(f_t_values, jnp.ndarray) and f_t_values.shape == t.shape:
-            # The boundary points move from (t,z0) to (f(t),z0)
-            ax.plot(t, z0 + (f_t_values - t), label=f'Boundary using {method}')
+        if isinstance(f_t_values, jnp.ndarray) and f_t_values.shape == config.t.shape:
+            f_t_downsampled = downsample_array(f_t_values)
+            ax.plot(t, z0 + (f_t_downsampled - t), label=f'Boundary using {method}')
     
     ax.set_xlabel('Time coordinate (t)')
     ax.set_ylabel('Spatial coordinate (z)')
@@ -256,8 +284,6 @@ def plot_boundary(results, config: PerturbationConfig, filename="boundary"):
     
     add_config_info(ax, config)
     plt.tight_layout()
-    # plt.show()
-
     plt.savefig(f"{filename}.pgf", bbox_inches='tight', pad_inches=0.1)
     plt.close()
 
@@ -275,29 +301,31 @@ def plot_dilaton_field(ft_config: FtOptimalConfig, pert_config: PerturbationConf
         Configuration instance containing optimized f(t) and derived fields
     pert_config : PerturbationConfig
         Configuration instance containing coordinate grids and parameters
+    filename : str, optional
+        Output filename (default: "dilaton_field")
     """
     setup_plot_style()
     fig, ax = plt.subplots()
     
-    # Get the dilaton field and use existing meshgrid from pert_config
-    dilaton = ft_config.dilaton
+    # Downsample the dilaton field and coordinate grids
+    dilaton_downsampled = downsample_array(ft_config.dilaton)
+    u_downsampled = downsample_array(pert_config._u)
+    v_downsampled = downsample_array(pert_config._v)
     
-    # Create contour plot using the existing u,v grids
-    contour = ax.contourf(pert_config._u, pert_config._v, dilaton, 
-                         levels=20, cmap='viridis')
+    # Create contour plot using downsampled data
+    contour = ax.contourf(u_downsampled, v_downsampled, dilaton_downsampled, 
+                         levels=15, cmap='viridis')
     fig.colorbar(contour, ax=ax, label=r'Dilaton field $\Phi(u,v)$')
     
-    # Plot the AdS boundary (u=v line)
-    u_vals = jnp.linspace(pert_config.t[0], pert_config.t[-1], 100)
+    # Use fewer points for the boundary line
+    u_vals = jnp.linspace(pert_config.t[0], pert_config.t[-1], 50)
     ax.plot(u_vals, u_vals,
             linestyle=REFERENCE_STYLE['linestyle'],
             color=REFERENCE_STYLE['color'],
             alpha=REFERENCE_STYLE['alpha'],
             label='AdS boundary (u=v)')
     
-    # Set equal aspect ratio for light cone coordinates
     ax.set_aspect('equal')
-    
     ax.set_xlabel('Light cone coordinate (u = t + z)')
     ax.set_ylabel('Light cone coordinate (v = t - z)')
     ax.set_title('Dilaton Field in Light Cone Coordinates')
@@ -306,7 +334,5 @@ def plot_dilaton_field(ft_config: FtOptimalConfig, pert_config: PerturbationConf
     
     add_config_info(ax, pert_config)
     plt.tight_layout()
-    # plt.show()
-
     plt.savefig(f"{filename}.pgf", bbox_inches='tight', pad_inches=0.1)
     plt.close()
