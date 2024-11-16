@@ -97,6 +97,30 @@ def add_config_info(ax, config, x=0.02, y=0.98, va='top', optimizer=None):
                 edgecolor=legend_props['edgecolor']
             ))
 
+def downsample_array(arr, target_size=200):
+    """
+    Downsample a 1D or 2D array to approximately target_size points.
+    
+    Parameters
+    ----------
+    arr : array_like
+        Input array (1D or 2D)
+    target_size : int, optional
+        Target number of points (default: 200)
+        
+    Returns
+    -------
+    array_like
+        Downsampled array
+    """
+    arr = jnp.array(arr)  # Convert JAX arrays to numpy if needed
+    if arr.ndim == 1:
+        step = max(len(arr) // target_size, 1)
+        return arr[::step]
+    else:
+        scale = target_size / max(arr.shape)
+        return zoom(arr, (scale, scale))
+
 ################################################################################
 # Boundary Results
 ################################################################################
@@ -159,30 +183,6 @@ def print_optimization_results(results, verbose=False):
                 print(f"  {optimized_params}")
             
             print("-"*80)
-
-def downsample_array(arr, target_size=200):
-    """
-    Downsample a 1D or 2D array to approximately target_size points.
-    
-    Parameters
-    ----------
-    arr : array_like
-        Input array (1D or 2D)
-    target_size : int, optional
-        Target number of points (default: 200)
-        
-    Returns
-    -------
-    array_like
-        Downsampled array
-    """
-    arr = jnp.array(arr)  # Convert JAX arrays to numpy if needed
-    if arr.ndim == 1:
-        step = max(len(arr) // target_size, 1)
-        return arr[::step]
-    else:
-        scale = target_size / max(arr.shape)
-        return zoom(arr, (scale, scale))
 
 def plot_f_vs_ft(results, config: PerturbationConfig, filename="f_vs_ft"):
     """
@@ -285,7 +285,7 @@ def plot_dilaton_field(ft_config: FtOptimalConfig, pert_config: PerturbationConf
         Output filename (default: "dilaton_field")
     """
     setup_plot_style()
-    fig, ax = plt.subplots(figsize=(6, 4.5))
+    fig, ax = plt.subplots(figsize=(6, 4), constrained_layout=True)
     
     # Calculate proper distance from boundary (using full resolution)
     r = jnp.sqrt((pert_config._u - pert_config._v)**2)
@@ -298,16 +298,17 @@ def plot_dilaton_field(ft_config: FtOptimalConfig, pert_config: PerturbationConf
     dilaton_downsampled = downsample_array(dilaton_rescaled)
     u_downsampled = downsample_array(pert_config._u)
     v_downsampled = downsample_array(pert_config._v)
+
+    max_val = jnp.abs(dilaton_downsampled).max().item()
+    min_val = dilaton_downsampled.min().item()
+    linthresh = max_val * 0.1
     
-    max_abs_val = jnp.abs(dilaton_downsampled).max().item()
-    linthresh = max_abs_val * 0.1  # 10% of max value for linear region
-    
-    norm = SymLogNorm(linthresh=linthresh, linscale=3.0, 
-                      vmin=-max_abs_val, vmax=max_abs_val)
+    norm = SymLogNorm(linthresh=linthresh, linscale=2.5, 
+                      vmin=-max_val, vmax=max_val)
     
     contour = ax.contourf(u_downsampled, v_downsampled, dilaton_downsampled, 
-                         levels=50, cmap='viridis', norm=norm)
-    fig.colorbar(contour, ax=ax, label=r'$r\Phi(u,v)$')
+                         levels=45, cmap='viridis', norm=norm)
+    fig.colorbar(contour, ax=ax, label=r'$r\Phi(u,v)$', pad=0.02)
     
     u_vals = jnp.linspace(pert_config.t[0], pert_config.t[-1], 50)
     ax.plot(u_vals, u_vals,
@@ -319,11 +320,11 @@ def plot_dilaton_field(ft_config: FtOptimalConfig, pert_config: PerturbationConf
     ax.set_aspect('equal')
     ax.set_xlabel(r'$u = t + z$')
     ax.set_ylabel(r'$v = t - z$')
-    ax.set_title(r'Rescaled Dilaton Field in Light Cone Coordinates')
+    ax.set_title(r'Rescaled Dilaton Field')
     ax.grid(True)
     ax.legend(loc='upper right')
     
     add_config_info(ax, pert_config, x=0.02, y=0.02, va='bottom', optimizer=ft_config.method)
-    plt.tight_layout()
+    # plt.tight_layout()
     plt.savefig(f"{filename}.pgf", bbox_inches='tight', pad_inches=0.1)
     plt.close()

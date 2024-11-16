@@ -32,6 +32,7 @@ os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION'] = '0.9'
 
 matplotlib.use('TkAgg')
 
+# Full OPTIMIZER_CONFIG
 OPTIMIZER_CONFIG = {
     "BFGS": True,
     "Adam (JAX)": True,
@@ -43,12 +44,24 @@ OPTIMIZER_CONFIG = {
     "Hessian-based Optimization": True
 }
 
+# Quick OPTIMIZER_CONFIG
+# OPTIMIZER_CONFIG = {
+#     "BFGS": True,
+#     "Adam (JAX)": False,
+#     "Adam (Optax)": False,
+#     "Yogi": False,
+#     "LBFGS": True,
+#     "AdaBelief": True,
+#     "Newton's Method": False,
+#     "Hessian-based Optimization": False 
+# }
+
 def main():
     PertConfig = PerturbationConfig(
         # Core parameters
         T=100.0,                   # Total simulation time
         Z=100.0,                   # Total simulation space
-        N=2000,                   # Number of spacetime samples
+        N=4000,                   # Number of spacetime samples
         G=1,                       # Gravitational constant in 2D
         a=0.1,                     # Stability parameter for back-reaction
 
