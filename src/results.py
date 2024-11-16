@@ -27,16 +27,16 @@ matplotlib.rcParams.update({
 
 PLOT_CONFIG = {
     'figure.figsize': (6, 4),
-    'font.size': 11,
+    'font.size': 10,
     'axes.titlesize': 12,
     'axes.labelsize': 11,
-    'legend.fontsize': 9,
+    'legend.fontsize': 8,
     'legend.framealpha': 0.8,
     'legend.edgecolor': 'gray',
     'legend.facecolor': 'white',
     'grid.alpha': 0.3,
-    'lines.linewidth': 2,
-    'lines.markersize': 6
+    'lines.linewidth': 1.5,
+    'lines.markersize': 4
 }
 
 # Config of reference line for plots
@@ -52,9 +52,11 @@ def setup_plot_style():
 
 def add_config_info(ax, config):
     """Add configuration parameters to plot in consistent location using legend styling."""
-    config_text = (f"T={config.T}, Z={config.Z}\n"
-                  f"N={config.N}\n"
-                  f"Perturbation strength={config.perturbation_strength}")
+    config_text = (r"$N=%d$, $\mathrm{Perturbation}=%.2f$" "\n"
+                  r"$M_\mathrm{opt}=%d$, $M_\mathrm{user}=%d$" % 
+                  (config.N, config.perturbation_strength, 
+                   int(config.M_opt), int(config.M_user)))
+
     
     # Get legend properties from rcParams
     legend_props = {

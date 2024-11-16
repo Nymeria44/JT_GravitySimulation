@@ -55,7 +55,7 @@ def main():
 
         # Fourier perturbation settings
         perturbation_strength=1,   # Perturbation magnitude
-        M_user=5,                  # User defined Fourier harmonics
+        M_user=10,                  # User defined Fourier harmonics
         M_opt=20,                  # Optimizer defined Fourier harmonics
 
         # Gaussian pulse settings
