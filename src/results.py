@@ -50,13 +50,26 @@ def setup_plot_style():
     """Set consistent style for all plots."""
     plt.rcParams.update(PLOT_CONFIG)
 
-def add_config_info(ax, config):
-    """Add configuration parameters to plot in consistent location using legend styling."""
+def add_config_info(ax, config, x=0.02, y=0.98, va='top'):
+    """Add configuration parameters to plot in consistent location using legend styling.
+    
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        The axes to add the text to
+    config : PerturbationConfig
+        Configuration instance containing parameters
+    x : float, optional
+        x position in axes coordinates (default: 0.02)
+    y : float, optional
+        y position in axes coordinates (default: 0.98)
+    va : str, optional
+        vertical alignment ('top' or 'bottom', default: 'top')
+    """
     config_text = (r"$N=%d$, $\mathrm{Perturbation}=%.2f$" "\n"
                   r"$M_\mathrm{opt}=%d$, $M_\mathrm{user}=%d$" % 
                   (config.N, config.perturbation_strength, 
                    int(config.M_opt), int(config.M_user)))
-
     
     # Get legend properties from rcParams
     legend_props = {
@@ -66,9 +79,9 @@ def add_config_info(ax, config):
         'facecolor': plt.rcParams['legend.facecolor']
     }
     
-    ax.text(0.02, 0.98, config_text,
+    ax.text(x, y, config_text,
             transform=ax.transAxes,
-            verticalalignment='top',
+            verticalalignment=va,
             fontsize=legend_props['fontsize'],
             bbox=dict(
                 facecolor=legend_props['facecolor'],
@@ -334,7 +347,7 @@ def plot_dilaton_field(ft_config: FtOptimalConfig, pert_config: PerturbationConf
     ax.grid(True)
     ax.legend()
     
-    add_config_info(ax, pert_config)
+    add_config_info(ax, pert_config, x=0.02, y=0.02, va='bottom')
     plt.tight_layout()
     plt.savefig(f"{filename}.pgf", bbox_inches='tight', pad_inches=0.1)
     plt.close()
