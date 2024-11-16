@@ -299,8 +299,14 @@ def plot_dilaton_field(ft_config: FtOptimalConfig, pert_config: PerturbationConf
     u_downsampled = downsample_array(pert_config._u)
     v_downsampled = downsample_array(pert_config._v)
     
+    max_abs_val = jnp.abs(dilaton_downsampled).max().item()
+    linthresh = max_abs_val * 0.1  # 10% of max value for linear region
+    
+    norm = SymLogNorm(linthresh=linthresh, linscale=3.0, 
+                      vmin=-max_abs_val, vmax=max_abs_val)
+    
     contour = ax.contourf(u_downsampled, v_downsampled, dilaton_downsampled, 
-                         levels=50, cmap='viridis')
+                         levels=50, cmap='viridis', norm=norm)
     fig.colorbar(contour, ax=ax, label=r'$r\Phi(u,v)$')
     
     u_vals = jnp.linspace(pert_config.t[0], pert_config.t[-1], 50)
