@@ -308,7 +308,7 @@ def plot_dilaton_field(ft_config: FtOptimalConfig, pert_config: PerturbationConf
     
     contour = ax.contourf(u_downsampled, v_downsampled, dilaton_downsampled, 
                          levels=45, cmap='viridis', norm=norm)
-    fig.colorbar(contour, ax=ax, label=r'$r\Phi(u,v)$', pad=0.02)
+    fig.colorbar(contour, ax=ax, label=r'$\Phi(u,v)$', pad=0.02)
     
     u_vals = jnp.linspace(pert_config.t[0], pert_config.t[-1], 50)
     ax.plot(u_vals, u_vals,

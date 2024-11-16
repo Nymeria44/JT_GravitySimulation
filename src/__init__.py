@@ -76,7 +76,7 @@ def main():
         pulse_width=0              # Pulse width
     )
     PertConfig.validate_pulse_width()
-    # PertConfig.debug_info()
+    PertConfig.debug_info()
 
 ################################################################################
 # Boundary Calculations
