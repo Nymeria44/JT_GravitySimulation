@@ -217,48 +217,6 @@ def plot_f_vs_ft(results, config: PerturbationConfig, filename="f_vs_ft"):
     plt.savefig(f"{filename}.pgf", bbox_inches='tight', pad_inches=0.1)
     plt.close()
 
-def plot_deviation_from_t(results, config: PerturbationConfig, filename="deviation_from_t"):
-    """
-    Plot the deviation of f(t) from linearity.
-
-    Parameters
-    ----------
-    results : dict
-        Dictionary containing optimization results including f(t) values
-    config : PerturbationConfig
-        Configuration instance containing parameters and time grid
-    filename : str, optional
-        Output filename (default: "deviation_from_t")
-    """
-    setup_plot_style()
-    _, ax = plt.subplots()
-    
-    # Downsample the time array
-    t = downsample_array(config.t)
-    
-    ax.plot(t, jnp.zeros_like(t),
-            linestyle=REFERENCE_STYLE['linestyle'],
-            color=REFERENCE_STYLE['color'],
-            alpha=REFERENCE_STYLE['alpha'],
-            label='No deviation')
-    
-    for method, f_t_values in results["f_t"].items():
-        if isinstance(f_t_values, jnp.ndarray) and f_t_values.shape == config.t.shape:
-            f_t_downsampled = downsample_array(f_t_values)
-            f_t_minus_t = f_t_downsampled - t
-            ax.plot(t, f_t_minus_t, label=f"Deviation using {method}")
-
-    ax.set_xlabel('Original time (t)')
-    ax.set_ylabel('Deviation from original time (f(t) - t)')
-    ax.set_title('Time Coordinate Shift')
-    ax.grid(True)
-    ax.legend()
-    
-    add_config_info(ax, config)
-    plt.tight_layout()
-    plt.savefig(f"{filename}.pgf", bbox_inches='tight', pad_inches=0.1)
-    plt.close()
-
 def plot_boundary(results, config: PerturbationConfig, filename="boundary"):
     """
     Plot the physical boundary in (t,z) coordinates.
