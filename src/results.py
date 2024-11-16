@@ -36,7 +36,7 @@ PLOT_CONFIG = {
     'legend.facecolor': 'white',
     'grid.alpha': 0.3,
     'lines.linewidth': 1.5,
-    'lines.markersize': 4
+    'lines.markersize': 3
 }
 
 # Config of reference line for plots
@@ -71,7 +71,6 @@ def add_config_info(ax, config, x=0.02, y=0.98, va='top'):
                   (config.N, config.perturbation_strength, 
                    int(config.M_opt), int(config.M_user)))
     
-    # Get legend properties from rcParams
     legend_props = {
         'fontsize': plt.rcParams['legend.fontsize'],
         'framealpha': plt.rcParams['legend.framealpha'],
@@ -192,23 +191,22 @@ def plot_f_vs_ft(results, config: PerturbationConfig, filename="f_vs_ft"):
     setup_plot_style()
     _, ax = plt.subplots()
     
-    # Downsample the time array
     t = downsample_array(config.t)
     
     ax.plot(t, t, 
             linestyle=REFERENCE_STYLE['linestyle'],
             color=REFERENCE_STYLE['color'],
             alpha=REFERENCE_STYLE['alpha'],
-            label='Original (t)')
+            label=r'$t$')
     
     for method, f_t_values in results["f_t"].items():
         if isinstance(f_t_values, jnp.ndarray) and f_t_values.shape == config.t.shape:
             f_t_downsampled = downsample_array(f_t_values)
-            ax.plot(t, f_t_downsampled, label=f'f(t) using {method}')
+            ax.plot(t, f_t_downsampled, label=rf'$f(t)$ using {method}')
     
-    ax.set_xlabel('Original time (t)')
-    ax.set_ylabel('Reparameterised time f(t)')
-    ax.set_title('Time Coordinate Reparameterisation')
+    ax.set_xlabel(r'$t$')
+    ax.set_ylabel(r'$f(t)$')
+    ax.set_title(r'Time Coordinate Reparametrisation')
     ax.grid(True)
     ax.legend()
     
@@ -234,24 +232,24 @@ def plot_boundary(results, config: PerturbationConfig, filename="boundary"):
     setup_plot_style()
     _, ax = plt.subplots()
     
-    # Downsample the time array
     t = downsample_array(config.t)
-    z0 = 0  # Fixed spatial position of the boundary
+    z0 = 0
     
     ax.axhline(y=z0,
                linestyle=REFERENCE_STYLE['linestyle'],
                color=REFERENCE_STYLE['color'],
                alpha=REFERENCE_STYLE['alpha'],
-               label='Original boundary')
+               label=r'Original boundary')
     
     for method, f_t_values in results["f_t"].items():
         if isinstance(f_t_values, jnp.ndarray) and f_t_values.shape == config.t.shape:
             f_t_downsampled = downsample_array(f_t_values)
-            ax.plot(t, z0 + (f_t_downsampled - t), label=f'Boundary using {method}')
+            ax.plot(t, z0 + (f_t_downsampled - t), 
+                   label=rf'Boundary using {method}')
     
-    ax.set_xlabel('Time coordinate (t)')
-    ax.set_ylabel('Spatial coordinate (z)')
-    ax.set_title('Physical Boundary')
+    ax.set_xlabel(r'$t$')
+    ax.set_ylabel(r'$z$')
+    ax.set_title(r'Physical Boundary')
     ax.grid(True)
     ax.legend()
     
@@ -259,7 +257,6 @@ def plot_boundary(results, config: PerturbationConfig, filename="boundary"):
     plt.tight_layout()
     plt.savefig(f"{filename}.pgf", bbox_inches='tight', pad_inches=0.1)
     plt.close()
-
 ################################################################################
 # Bulk Results
 ################################################################################
@@ -280,28 +277,25 @@ def plot_dilaton_field(ft_config: FtOptimalConfig, pert_config: PerturbationConf
     setup_plot_style()
     fig, ax = plt.subplots()
     
-    # Downsample the dilaton field and coordinate grids
     dilaton_downsampled = downsample_array(ft_config.dilaton)
     u_downsampled = downsample_array(pert_config._u)
     v_downsampled = downsample_array(pert_config._v)
     
-    # Create contour plot using downsampled data
     contour = ax.contourf(u_downsampled, v_downsampled, dilaton_downsampled, 
                          levels=15, cmap='viridis')
-    fig.colorbar(contour, ax=ax, label=r'Dilaton field $\Phi(u,v)$')
+    fig.colorbar(contour, ax=ax, label=r'$\Phi(u,v)$')
     
-    # Use fewer points for the boundary line
     u_vals = jnp.linspace(pert_config.t[0], pert_config.t[-1], 50)
     ax.plot(u_vals, u_vals,
             linestyle=REFERENCE_STYLE['linestyle'],
             color=REFERENCE_STYLE['color'],
             alpha=REFERENCE_STYLE['alpha'],
-            label='AdS boundary (u=v)')
+            label=r'AdS boundary ($u=v$)')
     
     ax.set_aspect('equal')
-    ax.set_xlabel('Light cone coordinate (u = t + z)')
-    ax.set_ylabel('Light cone coordinate (v = t - z)')
-    ax.set_title('Dilaton Field in Light Cone Coordinates')
+    ax.set_xlabel(r'$u = t + z$')
+    ax.set_ylabel(r'$v = t - z$')
+    ax.set_title(r'Dilaton Field in Light Cone Coordinates')
     ax.grid(True)
     ax.legend()
     

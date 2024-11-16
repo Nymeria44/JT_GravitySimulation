@@ -13,7 +13,6 @@ from schwarzian import (
 from results import (
     print_optimization_results,
     plot_f_vs_ft,
-    plot_deviation_from_t,
     plot_boundary,
     plot_dilaton_field
 )
@@ -98,8 +97,7 @@ def main():
 ################################################################################
 
     print_optimization_results(results, verbose=False)
-    # plot_f_vs_ft(results, PertConfig)
-    # plot_deviation_from_t(results, PertConfig)
+    plot_f_vs_ft(results, PertConfig)
     plot_boundary(results, PertConfig)
     plot_dilaton_field(FtConfig , PertConfig)
 
