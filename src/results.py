@@ -1,6 +1,7 @@
 import matplotlib
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
+from matplotlib.colors import SymLogNorm
 from scipy.ndimage import zoom
 
 from config import PerturbationConfig
@@ -284,15 +285,23 @@ def plot_dilaton_field(ft_config: FtOptimalConfig, pert_config: PerturbationConf
         Output filename (default: "dilaton_field")
     """
     setup_plot_style()
-    fig, ax = plt.subplots(figsize=(6, 5))
+    fig, ax = plt.subplots(figsize=(6, 4.5))
     
-    dilaton_downsampled = downsample_array(ft_config.dilaton)
+    # Calculate proper distance from boundary (using full resolution)
+    r = jnp.sqrt((pert_config._u - pert_config._v)**2)
+    
+    # Add small epsilon to avoid division by zero at boundary
+    epsilon = 1e-10
+    dilaton_rescaled = ft_config.dilaton * r / (r + epsilon)
+    
+    # Downsample after rescaling
+    dilaton_downsampled = downsample_array(dilaton_rescaled)
     u_downsampled = downsample_array(pert_config._u)
     v_downsampled = downsample_array(pert_config._v)
     
     contour = ax.contourf(u_downsampled, v_downsampled, dilaton_downsampled, 
-                         levels=15, cmap='viridis')
-    fig.colorbar(contour, ax=ax, label=r'$\Phi(u,v)$')
+                         levels=50, cmap='viridis')
+    fig.colorbar(contour, ax=ax, label=r'$r\Phi(u,v)$')
     
     u_vals = jnp.linspace(pert_config.t[0], pert_config.t[-1], 50)
     ax.plot(u_vals, u_vals,
@@ -304,7 +313,7 @@ def plot_dilaton_field(ft_config: FtOptimalConfig, pert_config: PerturbationConf
     ax.set_aspect('equal')
     ax.set_xlabel(r'$u = t + z$')
     ax.set_ylabel(r'$v = t - z$')
-    ax.set_title(r'Dilaton Field in Light Cone Coordinates')
+    ax.set_title(r'Rescaled Dilaton Field in Light Cone Coordinates')
     ax.grid(True)
     ax.legend(loc='upper right')
     

@@ -53,7 +53,7 @@ def main():
         a=0.1,                     # Stability parameter for back-reaction
 
         # Fourier perturbation settings
-        perturbation_strength=1,   # Perturbation magnitude
+        perturbation_strength=4,   # Perturbation magnitude
         M_user=8,                  # User defined Fourier harmonics
         M_opt=20,                  # Optimizer defined Fourier harmonics
 
