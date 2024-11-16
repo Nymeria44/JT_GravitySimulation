@@ -33,14 +33,14 @@ os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION'] = '0.9'
 matplotlib.use('TkAgg')
 
 OPTIMIZER_CONFIG = {
-    "BFGS": False,
-    "Adam (JAX)": False,
+    "BFGS": True,
+    "Adam (JAX)": True,
     "Adam (Optax)": True,
     "Yogi": True,
-    "LBFGS": False,
+    "LBFGS": True,
     "AdaBelief": True,
-    "Newton's Method": False,
-    "Hessian-based Optimization": False 
+    "Newton's Method": True,
+    "Hessian-based Optimization": True
 }
 
 def main():
@@ -48,13 +48,13 @@ def main():
         # Core parameters
         T=100.0,                   # Total simulation time
         Z=100.0,                   # Total simulation space
-        N=4000,                   # Number of spacetime samples
+        N=2000,                   # Number of spacetime samples
         G=1,                       # Gravitational constant in 2D
         a=0.1,                     # Stability parameter for back-reaction
 
         # Fourier perturbation settings
         perturbation_strength=1,   # Perturbation magnitude
-        M_user=10,                  # User defined Fourier harmonics
+        M_user=8,                  # User defined Fourier harmonics
         M_opt=20,                  # Optimizer defined Fourier harmonics
 
         # Gaussian pulse settings

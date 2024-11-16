@@ -30,13 +30,13 @@ PLOT_CONFIG = {
     'font.size': 10,
     'axes.titlesize': 12,
     'axes.labelsize': 11,
-    'legend.fontsize': 8,
+    'legend.fontsize': 7,
     'legend.framealpha': 0.8,
     'legend.edgecolor': 'gray',
     'legend.facecolor': 'white',
     'grid.alpha': 0.3,
     'lines.linewidth': 1.5,
-    'lines.markersize': 3
+    'lines.markersize': 2
 }
 
 # Config of reference line for plots
@@ -50,7 +50,7 @@ def setup_plot_style():
     """Set consistent style for all plots."""
     plt.rcParams.update(PLOT_CONFIG)
 
-def add_config_info(ax, config, x=0.02, y=0.98, va='top'):
+def add_config_info(ax, config, x=0.02, y=0.98, va='top', optimizer=None):
     """Add configuration parameters to plot in consistent location using legend styling.
     
     Parameters
@@ -65,12 +65,20 @@ def add_config_info(ax, config, x=0.02, y=0.98, va='top'):
         y position in axes coordinates (default: 0.98)
     va : str, optional
         vertical alignment ('top' or 'bottom', default: 'top')
+    optimizer : str, optional
+        Name of optimizer to display (default: None)
     """
-    config_text = (r"$N=%d$, $\mathrm{Perturbation}=%.2f$" "\n"
-                  r"$M_\mathrm{opt}=%d$, $M_\mathrm{user}=%d$" % 
-                  (config.N, config.perturbation_strength, 
-                   int(config.M_opt), int(config.M_user)))
+    base_text = (r"$N=%d$, $\mathrm{Perturbation}=%.2f$" "\n"
+                r"$M_\mathrm{opt}=%d$, $M_\mathrm{user}=%d$" % 
+                (config.N, config.perturbation_strength, 
+                 int(config.M_opt), int(config.M_user)))
     
+    # Add optimizer info if provided
+    if optimizer is not None:
+        config_text = base_text + "\n" r"$\mathrm{Optimiser}=\mathrm{%s}$" % optimizer
+    else:
+        config_text = base_text
+
     legend_props = {
         'fontsize': plt.rcParams['legend.fontsize'],
         'framealpha': plt.rcParams['legend.framealpha'],
@@ -202,7 +210,7 @@ def plot_f_vs_ft(results, config: PerturbationConfig, filename="f_vs_ft"):
     for method, f_t_values in results["f_t"].items():
         if isinstance(f_t_values, jnp.ndarray) and f_t_values.shape == config.t.shape:
             f_t_downsampled = downsample_array(f_t_values)
-            ax.plot(t, f_t_downsampled, label=rf'$f(t)$ using {method}')
+            ax.plot(t, f_t_downsampled, label=rf'{method}')
     
     ax.set_xlabel(r'$t$')
     ax.set_ylabel(r'$f(t)$')
@@ -245,7 +253,7 @@ def plot_boundary(results, config: PerturbationConfig, filename="boundary"):
         if isinstance(f_t_values, jnp.ndarray) and f_t_values.shape == config.t.shape:
             f_t_downsampled = downsample_array(f_t_values)
             ax.plot(t, z0 + (f_t_downsampled - t), 
-                   label=rf'Boundary using {method}')
+                   label=rf'{method}')
     
     ax.set_xlabel(r'$t$')
     ax.set_ylabel(r'$z$')
@@ -300,7 +308,7 @@ def plot_dilaton_field(ft_config: FtOptimalConfig, pert_config: PerturbationConf
     ax.grid(True)
     ax.legend(loc='upper right')
     
-    add_config_info(ax, pert_config, x=0.02, y=0.02, va='bottom')
+    add_config_info(ax, pert_config, x=0.02, y=0.02, va='bottom', optimizer=ft_config.method)
     plt.tight_layout()
     plt.savefig(f"{filename}.pgf", bbox_inches='tight', pad_inches=0.1)
     plt.close()
