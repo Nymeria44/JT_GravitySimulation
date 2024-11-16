@@ -208,7 +208,7 @@ def plot_f_vs_ft(results, config: PerturbationConfig, filename="f_vs_ft"):
     ax.set_ylabel(r'$f(t)$')
     ax.set_title(r'Time Coordinate Reparametrisation')
     ax.grid(True)
-    ax.legend()
+    ax.legend(loc='lower right')
     
     add_config_info(ax, config)
     plt.tight_layout()
@@ -251,12 +251,13 @@ def plot_boundary(results, config: PerturbationConfig, filename="boundary"):
     ax.set_ylabel(r'$z$')
     ax.set_title(r'Physical Boundary')
     ax.grid(True)
-    ax.legend()
+    ax.legend(loc='upper right')
     
     add_config_info(ax, config)
     plt.tight_layout()
     plt.savefig(f"{filename}.pgf", bbox_inches='tight', pad_inches=0.1)
     plt.close()
+
 ################################################################################
 # Bulk Results
 ################################################################################
@@ -297,7 +298,7 @@ def plot_dilaton_field(ft_config: FtOptimalConfig, pert_config: PerturbationConf
     ax.set_ylabel(r'$v = t - z$')
     ax.set_title(r'Dilaton Field in Light Cone Coordinates')
     ax.grid(True)
-    ax.legend()
+    ax.legend(loc='upper right')
     
     add_config_info(ax, pert_config, x=0.02, y=0.02, va='bottom')
     plt.tight_layout()
