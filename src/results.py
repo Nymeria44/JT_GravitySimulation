@@ -30,7 +30,7 @@ PLOT_CONFIG = {
     'font.size': 10,
     'axes.titlesize': 12,
     'axes.labelsize': 11,
-    'legend.fontsize': 7,
+    'legend.fontsize': 6.5,
     'legend.framealpha': 0.8,
     'legend.edgecolor': 'gray',
     'legend.facecolor': 'white',
@@ -284,7 +284,7 @@ def plot_dilaton_field(ft_config: FtOptimalConfig, pert_config: PerturbationConf
         Output filename (default: "dilaton_field")
     """
     setup_plot_style()
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(6, 5))
     
     dilaton_downsampled = downsample_array(ft_config.dilaton)
     u_downsampled = downsample_array(pert_config._u)
